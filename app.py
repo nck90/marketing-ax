@@ -538,7 +538,27 @@ def sns_instagram_analyze():
         with open(PERSONA_FILE, "w", encoding="utf-8") as f:
             json.dump(persona, f, ensure_ascii=False, indent=2)
 
-        return jsonify({"success": True, "persona": persona})
+        # 프로필 정보 (저장된 데이터에서 추출)
+        profile_info = {"username": "unknown", "followers": 0, "following": 0, "posts": 0}
+        posts_file = os.path.join(base_dir, "olidia_all_posts.json")
+        if os.path.isfile(posts_file):
+            with open(posts_file, encoding="utf-8") as pf:
+                pdata = json.load(pf)
+            if isinstance(pdata, dict) and "profile" in pdata:
+                p = pdata["profile"]
+                profile_info = {
+                    "username": p.get("name", "unknown"),
+                    "followers": p.get("followers", 0),
+                    "following": 0,
+                    "posts": p.get("total_posts", len(pdata.get("posts", []))),
+                }
+        if instagram_url:
+            import re
+            match = re.search(r'instagram\.com/([^/?]+)', instagram_url)
+            if match:
+                profile_info["username"] = match.group(1)
+
+        return jsonify({"success": True, "persona": persona, "profile": profile_info})
     except Exception as e:
         return jsonify({"error": f"분석 실패: {str(e)}"}), 500
 

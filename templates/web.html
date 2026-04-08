@@ -3141,8 +3141,10 @@
       if (data.error) throw new Error(data.error);
 
       currentPersona = data.persona;
+      const profile = data.profile || {};
       localStorage.setItem('igConnected', 'true');
       localStorage.setItem('igUrl', url);
+      localStorage.setItem('igProfile', JSON.stringify(profile));
 
       // 연결 상태 UI 업데이트
       document.getElementById('igStatus').textContent = '연결됨';
@@ -3152,7 +3154,9 @@
       document.getElementById('igProfile').style.display = 'block';
 
       const username = url.match(/instagram\.com\/([^/?]+)/);
-      document.getElementById('igUsername').textContent = '@' + (username ? username[1] : 'unknown');
+      document.getElementById('igUsername').textContent = '@' + (username ? username[1] : profile.username || 'unknown');
+      document.getElementById('igFollowers').textContent = formatNum(profile.followers || 0);
+      document.getElementById('igPosts').textContent = formatNum(profile.posts || 0);
 
       showToast('페르소나 분석 완료! 페르소나 탭에서 확인하세요.', 'success');
       renderPersona(currentPersona);
