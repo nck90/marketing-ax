@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 1080px; height: 1350px; overflow: hidden;
+    font-family: 'Noto Sans KR', 'Apple SD Gothic Neo', sans-serif;
+    background: #E8862A;
+    margin: 0;
+    padding: 0;
+  }
+  .slide { width: 1080px; height: 1350px; position: relative; display: flex; flex-direction: column; }
+  .orange-bar {
+    background: #E8862A; padding: 36px 60px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .orange-bar .brand { font-size: 36px; font-weight: 900; color: #fff; }
+  .orange-bar .sub { font-size: 20px; color: rgba(255,255,255,0.8); }
+  .main-area { flex: 1; position: relative; }
+  .bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; opacity: 0.15; }
+  .content {
+    position: relative; z-index: 1; padding: 60px 80px;
+    height: 100%; display: flex; flex-direction: column; justify-content: center;
+  }
+  .heading {
+    font-size: 52px; font-weight: 900; color: #222; line-height: 1.35;
+    margin-bottom: 40px; word-break: keep-all; text-align: center;
+  }
+  .heading .accent { color: #E8862A; }
+  .body {
+    font-size: 30px; font-weight: 400; color: #444; line-height: 1.8;
+    text-align: center; word-break: keep-all;
+  }
+  .bottom-line {
+    padding: 28px 60px; text-align: center;
+    font-size: 22px; color: #999; border-top: 1px solid #e0dcd6;
+  }
+</style>
+</head>
+<body>
+  <div class="slide">
+    <div class="orange-bar">
+      <div class="brand">Olidia&reg;</div>
+      <div class="sub">콜라겐, 빠르게</div>
+    </div>
+    <div class="main-area">
+      <img class="bg" src="{{image_path}}" alt="">
+      <div class="content">
+        <div class="heading">{{heading}}</div>
+        <div class="body">{{body}}</div>
+      </div>
+    </div>
+    <div class="bottom-line">{{category_tag}} &mdash; @olidia_official</div>
+  </div>
+</body>
+</html>

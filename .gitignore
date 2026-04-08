@@ -1,0 +1,32 @@
+# Environment
+.env
+*.pyc
+__pycache__/
+.DS_Store
+
+# Sessions
+.insta_session.json
+session-*.json
+
+# Output
+output/
+*.png
+*.jpg
+
+# Data (regeneratable)
+olidia_posts.json
+olidia_all_posts.json
+olidia_insta_images/
+usage.json
+persona.json
+
+# IDE
+.vscode/
+.idea/
+
+# OMC/Claude state
+.omc/
+FILE_NAME
+
+# Reference images (large)
+images/

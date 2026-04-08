@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  cardflow:
+    build: .
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    volumes:
+      - ./output:/app/output
+      - ./brand.md:/app/brand.md
+      - ./templates:/app/templates
+    restart: unless-stopped

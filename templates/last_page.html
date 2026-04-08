@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 1080px;
+    height: 1350px;
+    overflow: hidden;
+    font-family: 'Noto Sans KR', 'Apple SD Gothic Neo', sans-serif;
+    background: rgba(255,255,255,0.97);
+    margin: 0;
+    padding: 0;
+  }
+  .slide {
+    width: 1080px;
+    height: 1350px;
+    position: relative;
+  }
+  .bg {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    z-index: 0;
+    opacity: 0.25;
+  }
+  .content {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 80px 90px;
+  }
+  .brand-top {
+    font-size: 30px;
+    font-weight: 900;
+    color: #E8862A;
+    margin-bottom: 60px;
+  }
+  .heading {
+    font-size: 56px;
+    font-weight: 900;
+    color: #222;
+    line-height: 1.3;
+    margin-bottom: 16px;
+    word-break: keep-all;
+    letter-spacing: -1px;
+  }
+  .sub-heading {
+    font-size: 68px;
+    font-weight: 900;
+    color: #222;
+    margin-bottom: 60px;
+    letter-spacing: -2px;
+  }
+  .checklist {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    flex: 1;
+  }
+  .check-item {
+    background: rgba(255,255,255,0.85);
+    border-radius: 16px;
+    padding: 28px 36px;
+    font-size: 28px;
+    font-weight: 500;
+    color: #333;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+  .check-icon {
+    width: 36px;
+    height: 36px;
+    background: #E8862A;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 20px;
+    font-weight: 900;
+    flex-shrink: 0;
+  }
+  .check-item strong { color: #E8862A; }
+  .footer {
+    text-align: center;
+    padding-top: 40px;
+    font-size: 22px;
+    color: #999;
+  }
+</style>
+</head>
+<body>
+  <div class="slide">
+    <img class="bg" src="{{image_path}}" alt="">
+    <div class="content">
+      <div class="brand-top">올리디아&reg;</div>
+      <div class="heading">{{heading}}</div>
+      <div class="sub-heading">{{sub_heading}}</div>
+      <div class="checklist">{{checklist_html}}</div>
+      <div class="footer">@olidia_official</div>
+    </div>
+  </div>
+</body>
+</html>

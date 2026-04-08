@@ -1,0 +1,3953 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CardFlow — AI 카드뉴스 플랫폼</title>
+  <style>
+    :root {
+      --primary: #E8862A;
+      --primary-light: #fff3e8;
+      --primary-dark: #c96e1a;
+      --accent: #F59E0B;
+      --secondary: #1a1a2e;
+      --dark: #1a1a2e;
+      --dark2: #252540;
+      --success: #10B981;
+      --error: #EF4444;
+      --light: #F8F7F4;
+      --card-bg: #FFFFFF;
+      --text: #1F2937;
+      --muted: #9CA3AF;
+      --border: #E5E7EB;
+      --sidebar-w: 260px;
+      --sidebar-w-collapsed: 68px;
+      --radius: 16px;
+      --radius-sm: 12px;
+      --shadow: 0 2px 12px rgba(0,0,0,0.07);
+      --shadow-md: 0 8px 32px rgba(0,0,0,0.12);
+      --shadow-lg: 0 20px 60px rgba(0,0,0,0.18);
+      --transition: 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Apple SD Gothic Neo', 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--light);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      overflow-x: hidden;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* ── Page transition ── */
+    .section {
+      display: none;
+      animation: fadeIn 0.28s ease both;
+    }
+    .section.active { display: block; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: var(--sidebar-w);
+      min-height: 100vh;
+      background: var(--dark);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      z-index: 100;
+      transition: width var(--transition);
+      overflow: hidden;
+    }
+
+    .sidebar.collapsed { width: var(--sidebar-w-collapsed); }
+
+    .sidebar-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 28px 16px 24px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .logo-icon {
+      width: 40px;
+      height: 40px;
+      background: var(--primary);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .logo-icon svg { display: block; }
+
+    .logo-text { color: #fff; transition: opacity var(--transition); }
+    .sidebar.collapsed .logo-text { opacity: 0; pointer-events: none; }
+
+    .logo-text strong {
+      display: block;
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+    .logo-text span { font-size: 11px; opacity: 0.5; font-weight: 500; }
+
+    .sidebar-nav {
+      flex: 1;
+      padding: 16px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      overflow: hidden;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 12px;
+      border-radius: 10px;
+      color: rgba(255,255,255,0.55);
+      cursor: pointer;
+      transition: background var(--transition), color var(--transition);
+      user-select: none;
+      font-size: 14px;
+      font-weight: 500;
+      white-space: nowrap;
+      position: relative;
+    }
+
+    .nav-item:hover {
+      background: rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.9);
+    }
+
+    .nav-item.active {
+      background: rgba(232,134,42,0.18);
+      color: var(--primary);
+    }
+
+    .nav-item svg { flex-shrink: 0; opacity: 0.75; }
+    .nav-item.active svg { opacity: 1; }
+
+    .nav-label { transition: opacity var(--transition); }
+    .sidebar.collapsed .nav-label { opacity: 0; pointer-events: none; }
+
+    /* Tooltip on collapsed sidebar */
+    .nav-item[data-tip]::after {
+      content: attr(data-tip);
+      position: absolute;
+      left: calc(var(--sidebar-w-collapsed) + 4px);
+      background: var(--dark2);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 5px 10px;
+      border-radius: 7px;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transform: translateX(-4px);
+      transition: opacity 0.15s, transform 0.15s;
+      z-index: 200;
+    }
+    .sidebar.collapsed .nav-item[data-tip]:hover::after {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    .sidebar-collapse-btn {
+      position: absolute;
+      top: 28px;
+      right: -12px;
+      width: 24px;
+      height: 24px;
+      background: var(--card-bg);
+      border: 1.5px solid var(--border);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 110;
+      transition: transform var(--transition), background var(--transition);
+      box-shadow: var(--shadow);
+    }
+    .sidebar-collapse-btn:hover { background: var(--light); }
+    .sidebar.collapsed .sidebar-collapse-btn { transform: rotate(180deg); right: -12px; }
+
+    .sidebar-usage {
+      padding: 16px 14px 24px;
+      border-top: 1px solid rgba(255,255,255,0.07);
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .usage-label { font-size: 12px; color: rgba(255,255,255,0.4); margin-bottom: 8px; }
+    .usage-bar-wrap {
+      background: rgba(255,255,255,0.1);
+      border-radius: 999px;
+      height: 5px;
+      overflow: hidden;
+      margin-bottom: 6px;
+    }
+    .usage-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      border-radius: 999px;
+      transition: width 0.6s ease;
+    }
+    .usage-count { font-size: 12px; color: rgba(255,255,255,0.45); }
+    .sidebar.collapsed .usage-label,
+    .sidebar.collapsed .usage-count { opacity: 0; }
+
+    /* ── Main Content ── */
+    .main-wrap {
+      margin-left: var(--sidebar-w);
+      flex: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      transition: margin-left var(--transition);
+    }
+    .main-wrap.collapsed { margin-left: var(--sidebar-w-collapsed); }
+
+    /* ── Top bar ── */
+    .top-bar {
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--border);
+      padding: 0 36px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .top-bar-left { display: flex; align-items: center; gap: 14px; }
+    .top-bar-breadcrumb { font-size: 12px; color: var(--muted); }
+    .top-bar-title {
+      font-size: 17px;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -0.5px;
+    }
+
+    .top-bar-right { display: flex; align-items: center; gap: 16px; }
+
+    .api-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      flex-shrink: 0;
+      box-shadow: 0 0 0 2px rgba(16,185,129,0.25);
+    }
+
+    .user-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .content-area { padding: 36px; flex: 1; }
+
+    /* ── Cards / common ── */
+    .card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 28px 32px;
+      transition: box-shadow var(--transition), transform var(--transition);
+    }
+    .card + .card { margin-top: 20px; }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -0.5px;
+      margin-bottom: 4px;
+    }
+    .card-desc { font-size: 13px; color: var(--muted); line-height: 1.5; margin-bottom: 20px; }
+
+    /* ── Dashboard ── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      margin-bottom: 28px;
+    }
+
+    .stat-card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 24px 28px;
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      transition: transform var(--transition), box-shadow var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      border-radius: var(--radius) var(--radius) 0 0;
+    }
+    .stat-card.orange::before { background: linear-gradient(90deg, var(--primary), var(--accent)); }
+    .stat-card.green::before  { background: linear-gradient(90deg, var(--success), #34d399); }
+    .stat-card.blue::before   { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+
+    .stat-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+
+    .stat-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .stat-icon.orange { background: var(--primary-light); color: var(--primary); }
+    .stat-icon.green  { background: #f0fdf4; color: #16a34a; }
+    .stat-icon.blue   { background: #eff6ff; color: #2563eb; }
+
+    .stat-label { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+    .stat-value { font-size: 26px; font-weight: 800; color: var(--text); line-height: 1; letter-spacing: -0.5px; }
+    .stat-sub   { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+    /* Skeleton loading */
+    .skeleton {
+      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s infinite;
+      border-radius: 6px;
+    }
+    @keyframes shimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    .skeleton-text { height: 14px; margin-bottom: 8px; }
+    .skeleton-value { height: 32px; width: 60px; margin-bottom: 6px; }
+
+    .welcome-msg {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -0.5px;
+      margin-bottom: 6px;
+    }
+    .welcome-sub { font-size: 14px; color: var(--muted); margin-bottom: 28px; }
+
+    .section-label {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.3px;
+      margin-bottom: 14px;
+      margin-top: 8px;
+    }
+
+    .recent-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .recent-item {
+      background: var(--card-bg);
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow);
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      transition: transform var(--transition), box-shadow var(--transition);
+      cursor: default;
+    }
+    .recent-item:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+
+    .recent-item-topic { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+    .recent-item-meta  { font-size: 12px; color: var(--muted); }
+    .recent-item-badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--primary-light);
+      color: var(--primary);
+      white-space: nowrap;
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 56px 24px;
+      color: var(--muted);
+    }
+    .empty-state-icon {
+      margin: 0 auto 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .empty-state-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 8px;
+      letter-spacing: -0.3px;
+    }
+    .empty-state p { font-size: 14px; color: var(--muted); line-height: 1.6; }
+
+    /* ── Create Section ── */
+    .create-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+    @media (max-width: 1100px) {
+      .create-layout { grid-template-columns: 1fr; }
+    }
+
+    .form-group { margin-bottom: 20px; }
+
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    .form-label span { font-weight: 400; color: var(--muted); }
+
+    .form-input, .form-select, .form-textarea {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      font-family: inherit;
+      color: var(--text);
+      background: #fafafa;
+      transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(232,134,42,0.1);
+      background: #fff;
+    }
+    .form-textarea {
+      min-height: 120px;
+      resize: vertical;
+      line-height: 1.6;
+    }
+    .form-textarea::placeholder, .form-input::placeholder { color: #c4c4c4; }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 16px 0;
+    }
+    .divider-line { flex: 1; height: 1px; background: var(--border); }
+    .divider-text { font-size: 12px; color: var(--muted); font-weight: 600; }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text);
+      cursor: pointer;
+      user-select: none;
+    }
+    .checkbox-row input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--primary);
+      cursor: pointer;
+    }
+
+    /* Upload area */
+    .upload-area {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius-sm);
+      padding: 28px 20px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color var(--transition), background var(--transition), transform var(--transition);
+      background: #fafafa;
+      position: relative;
+    }
+    .upload-area:hover {
+      border-color: var(--primary);
+      background: var(--primary-light);
+      transform: scale(1.01);
+    }
+    .upload-area.dragover {
+      border-color: var(--primary);
+      background: var(--primary-light);
+      transform: scale(1.02);
+      box-shadow: 0 0 0 4px rgba(232,134,42,0.12);
+    }
+    .upload-icon-wrap {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: var(--light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 12px;
+      transition: background var(--transition);
+    }
+    .upload-area:hover .upload-icon-wrap,
+    .upload-area.dragover .upload-icon-wrap {
+      background: rgba(232,134,42,0.15);
+    }
+    .upload-area p { font-size: 13px; color: var(--muted); margin: 4px 0 0; }
+    .upload-area p strong { color: var(--primary); }
+    .upload-hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+    .upload-preview {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+      justify-content: center;
+    }
+
+    .preview-item {
+      position: relative;
+      width: 64px;
+      height: 64px;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1.5px solid var(--border);
+      transition: transform var(--transition);
+    }
+    .preview-item:hover { transform: scale(1.05); }
+    .preview-item img { width: 100%; height: 100%; object-fit: cover; }
+    .preview-item .remove-btn {
+      position: absolute;
+      top: 3px; right: 3px;
+      background: rgba(0,0,0,0.65);
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      width: 18px; height: 18px;
+      font-size: 11px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background var(--transition);
+    }
+    .preview-item .remove-btn:hover { background: var(--error); }
+
+    /* Template selector */
+    .template-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+
+    .tpl-card {
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 8px;
+      cursor: pointer;
+      transition: border-color var(--transition), background var(--transition), transform var(--transition), box-shadow var(--transition);
+      background: #fafafa;
+      text-align: center;
+      user-select: none;
+    }
+    .tpl-card:hover {
+      border-color: var(--primary);
+      background: var(--primary-light);
+      transform: translateY(-2px);
+    }
+    .tpl-card.selected {
+      border-color: var(--primary);
+      background: var(--primary-light);
+      box-shadow: 0 0 0 3px rgba(232,134,42,0.18);
+    }
+
+    .tpl-preview {
+      width: 100%;
+      aspect-ratio: 4/5;
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 8px;
+      font-size: 9px;
+      position: relative;
+    }
+
+    .tpl-preview.style-mix {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 2px;
+    }
+    .mix-cell { display: flex; align-items: flex-end; padding: 2px; }
+    .mix-cell span { font-size: 6px; font-weight: 700; color: rgba(255,255,255,0.8); }
+    .mix-cell:nth-child(1) { background: #e8d5c0; }
+    .mix-cell:nth-child(2) { background: #E8862A; }
+    .mix-cell:nth-child(3) { background: #333; }
+    .mix-cell:nth-child(4) { background: #f0ece6; }
+
+    .tpl-preview.style-a {
+      background: linear-gradient(to bottom, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.9) 60%, #fff 100%);
+      background-color: #e8d5c0;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 6px;
+    }
+    .tpl-preview.style-a .tpl-tag { background: #E8862A; color: #fff; padding: 1px 4px; border-radius: 4px; font-size: 7px; font-weight: 700; margin-bottom: 3px; width: fit-content; }
+    .tpl-preview.style-a .tpl-title { font-size: 8px; font-weight: 900; color: #222; line-height: 1.3; }
+
+    .tpl-preview.style-b {
+      background: #f5f0ea;
+      display: flex;
+      flex-direction: column;
+    }
+    .tpl-bar { background: #E8862A; padding: 4px 6px; display: flex; justify-content: space-between; }
+    .tpl-bar span { color: #fff; font-size: 7px; font-weight: 700; }
+    .tpl-body { flex: 1; display: flex; align-items: center; justify-content: center; padding: 6px; }
+    .tpl-body .tpl-title { font-size: 8px; font-weight: 900; color: #222; text-align: center; line-height: 1.3; }
+
+    .tpl-preview.style-c {
+      background: linear-gradient(to bottom, rgba(0,0,0,0.2), rgba(0,0,0,0.8));
+      background-color: #333;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 6px;
+    }
+    .tpl-preview.style-c .tpl-tag { background: #E8862A; color: #fff; padding: 1px 4px; border-radius: 4px; font-size: 7px; font-weight: 700; margin-bottom: 3px; width: fit-content; }
+    .tpl-preview.style-c .tpl-title { font-size: 8px; font-weight: 900; color: #fff; line-height: 1.3; }
+
+    .tpl-name { font-size: 11px; font-weight: 700; color: var(--text); }
+    .tpl-card.selected .tpl-name { color: var(--primary); }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 700;
+      font-family: inherit;
+      border: none;
+      cursor: pointer;
+      transition: background var(--transition), transform 0.1s, box-shadow var(--transition), opacity var(--transition);
+      text-decoration: none;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn:active { transform: scale(0.97); }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(232,134,42,0.3);
+    }
+    .btn-primary:hover {
+      background: var(--primary-dark);
+      box-shadow: 0 6px 20px rgba(232,134,42,0.4);
+      transform: translateY(-1px);
+    }
+
+    .btn-dark { background: var(--dark); color: #fff; }
+    .btn-dark:hover { background: var(--dark2); transform: translateY(-1px); }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--text);
+      border: 1.5px solid var(--border);
+    }
+    .btn-outline:hover { background: var(--light); transform: translateY(-1px); }
+
+    .btn-light { background: var(--light); color: var(--text); }
+    .btn-light:hover { background: var(--border); }
+
+    .btn-sm { padding: 8px 16px; font-size: 13px; }
+
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
+    /* Button loading state */
+    .btn-loading { pointer-events: none; }
+    .btn-loading .btn-spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    /* Progress */
+    .progress-wrap {
+      display: none;
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 28px 32px;
+      margin-bottom: 20px;
+    }
+    .progress-wrap.visible { display: block; animation: fadeIn 0.25s ease; }
+
+    .progress-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 3px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .progress-title { font-size: 15px; font-weight: 700; color: var(--text); letter-spacing: -0.3px; }
+
+    /* Step indicators */
+    .progress-steps {
+      display: flex;
+      gap: 0;
+      margin-bottom: 20px;
+      position: relative;
+    }
+    .progress-steps::before {
+      content: '';
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      right: 14px;
+      height: 2px;
+      background: var(--border);
+      z-index: 0;
+    }
+    .progress-step {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      position: relative;
+      z-index: 1;
+    }
+    .step-dot {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      transition: background var(--transition), color var(--transition), transform var(--transition);
+      border: 2px solid #fff;
+      box-shadow: 0 0 0 2px var(--border);
+    }
+    .step-dot.active {
+      background: var(--primary);
+      color: #fff;
+      box-shadow: 0 0 0 3px rgba(232,134,42,0.2);
+      transform: scale(1.1);
+    }
+    .step-dot.done {
+      background: var(--success);
+      color: #fff;
+      box-shadow: 0 0 0 2px rgba(16,185,129,0.2);
+    }
+    .step-label {
+      font-size: 11px;
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.3;
+      font-weight: 500;
+    }
+    .progress-step.active .step-label { color: var(--primary); font-weight: 600; }
+    .progress-step.done .step-label   { color: var(--success); }
+
+    .progress-msg { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+
+    .progress-bar-wrap {
+      background: var(--light);
+      border-radius: 999px;
+      height: 6px;
+      overflow: hidden;
+    }
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      border-radius: 999px;
+      transition: width 0.5s ease;
+      width: 0%;
+    }
+    .progress-pct { font-size: 12px; color: var(--muted); text-align: right; margin-top: 5px; }
+
+    /* Error box */
+    .error-box {
+      display: none;
+      background: #fff5f5;
+      border: 1.5px solid #fca5a5;
+      border-radius: var(--radius-sm);
+      padding: 16px 20px;
+      color: var(--error);
+      font-size: 14px;
+      margin-bottom: 20px;
+      display: none;
+      align-items: center;
+      gap: 10px;
+    }
+    .error-box.visible { display: flex; animation: fadeIn 0.2s ease; }
+
+    /* Results */
+    .results-wrap { display: none; }
+    .results-wrap.visible { display: block; animation: fadeIn 0.3s ease; }
+
+    .results-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .results-title { font-size: 18px; font-weight: 800; color: var(--text); letter-spacing: -0.5px; }
+    .badge-green { background: #f0fdf4; color: #16a34a; font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 999px; margin-left: 10px; }
+    .results-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+    .slides-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 20px;
+    }
+
+    .slide-card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      transition: transform var(--transition), box-shadow var(--transition);
+      cursor: pointer;
+    }
+    .slide-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-md); }
+
+    .slide-img-wrap {
+      position: relative;
+      aspect-ratio: 1080/1350;
+      background: var(--dark);
+      overflow: hidden;
+    }
+    .slide-img-wrap img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.4s ease;
+    }
+    .slide-card:hover .slide-img-wrap img { transform: scale(1.04); }
+
+    .slide-num {
+      position: absolute;
+      top: 10px; left: 10px;
+      background: rgba(0,0,0,0.55);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+    .slide-type-badge {
+      position: absolute;
+      top: 10px; right: 10px;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+    .slide-type-badge.cover   { background: var(--primary-light); color: var(--primary); }
+    .slide-type-badge.content { background: rgba(255,255,255,0.2); color: #fff; }
+    .slide-type-badge.last    { background: var(--primary); color: #fff; }
+
+    /* Enlarge overlay on slide-img-wrap hover */
+    .slide-img-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background var(--transition);
+    }
+    .slide-card:hover .slide-img-overlay { background: rgba(0,0,0,0.25); }
+    .slide-img-overlay svg { opacity: 0; transform: scale(0.8); transition: opacity var(--transition), transform var(--transition); }
+    .slide-card:hover .slide-img-overlay svg { opacity: 1; transform: scale(1); }
+
+    .slide-info { padding: 14px 16px 16px; }
+    .slide-heading {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 10px;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .slide-actions { display: flex; gap: 6px; }
+
+    /* ── SNS Section ── */
+    .sns-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 20px;
+    }
+    .sns-card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 24px;
+      transition: transform var(--transition), box-shadow var(--transition);
+    }
+    .sns-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+
+    .sns-card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+
+    .sns-icon {
+      width: 44px; height: 44px;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      font-size: 22px;
+    }
+    .sns-icon.instagram { background: linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); }
+    .sns-icon.blog      { background: #03c75a; }
+    .sns-icon.facebook  { background: #1877f2; }
+    .sns-icon.threads   { background: #000; }
+
+    .sns-card-name   { font-size: 15px; font-weight: 700; color: var(--text); }
+    .sns-card-status { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    .coming-soon-badge {
+      display: inline-block;
+      background: var(--light);
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 999px;
+      margin-top: 8px;
+    }
+
+    .sns-profile { display: none; border-top: 1px solid var(--border); padding-top: 16px; margin-top: 8px; }
+    .sns-profile.visible { display: block; }
+
+    .sns-profile-row { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+    .sns-avatar {
+      width: 48px; height: 48px;
+      border-radius: 50%;
+      background: var(--light);
+      overflow: hidden;
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+    }
+    .sns-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+    .sns-stats { display: flex; gap: 16px; margin-bottom: 14px; }
+    .sns-stat { text-align: center; }
+    .sns-stat-value { font-size: 15px; font-weight: 800; color: var(--text); }
+    .sns-stat-label { font-size: 11px; color: var(--muted); }
+
+    .instagram-connect-form { display: none; margin-top: 12px; }
+    .instagram-connect-form.visible { display: block; }
+
+    /* ── Persona Section ── */
+    .persona-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+    }
+    @media (max-width: 900px) { .persona-grid { grid-template-columns: 1fr; } }
+
+    .persona-card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 24px;
+      transition: transform var(--transition), box-shadow var(--transition);
+    }
+    .persona-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+
+    .persona-card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 18px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .persona-card-icon {
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      background: var(--primary-light);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .persona-card-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.2px;
+    }
+
+    .persona-field { margin-bottom: 14px; }
+    .persona-field label { font-size: 12px; font-weight: 600; color: var(--muted); display: block; margin-bottom: 4px; }
+    .persona-field-val { font-size: 14px; color: var(--text); line-height: 1.5; }
+
+    .color-swatch { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text); }
+    .swatch { width: 20px; height: 20px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); flex-shrink: 0; }
+
+    .tag-list { display: flex; flex-wrap: wrap; gap: 6px; }
+    .tag {
+      background: var(--light);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 500;
+      padding: 4px 10px;
+      border-radius: 999px;
+      transition: background var(--transition), transform var(--transition);
+    }
+    .tag:hover { background: var(--primary-light); transform: translateY(-1px); }
+
+    .persona-no-sns {
+      text-align: center;
+      padding: 60px 24px;
+      color: var(--muted);
+    }
+    .persona-no-sns h3 { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 8px; letter-spacing: -0.3px; }
+    .persona-no-sns p { font-size: 14px; margin-bottom: 20px; }
+
+    /* Settings */
+    .settings-section-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 16px;
+    }
+    .input-group { position: relative; }
+    .input-group .form-input { padding-right: 40px; }
+
+    .toggle-visibility {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      transition: color var(--transition);
+    }
+    .toggle-visibility:hover { color: var(--text); }
+
+    .color-input-row { display: flex; align-items: center; gap: 10px; }
+    .color-input-row input[type="color"] {
+      width: 40px; height: 40px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      padding: 2px;
+      cursor: pointer;
+      background: none;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      backdrop-filter: blur(4px);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.visible { display: flex; animation: fadeIn 0.2s ease; }
+
+    .modal {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-lg);
+      padding: 36px;
+      width: 460px;
+      max-width: 90vw;
+      animation: modalIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    }
+    @keyframes modalIn {
+      from { opacity: 0; transform: scale(0.9) translateY(16px); }
+      to   { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .modal-title { font-size: 20px; font-weight: 800; color: var(--text); letter-spacing: -0.5px; margin-bottom: 6px; }
+    .modal-desc  { font-size: 13px; color: var(--muted); margin-bottom: 24px; line-height: 1.6; }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
+
+    /* Slide preview modal */
+    .slide-modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.8);
+      backdrop-filter: blur(8px);
+      z-index: 300;
+      align-items: center;
+      justify-content: center;
+    }
+    .slide-modal-overlay.visible { display: flex; animation: fadeIn 0.2s ease; }
+
+    .slide-modal-inner {
+      position: relative;
+      max-width: min(540px, 90vw);
+      width: 100%;
+      animation: modalIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    }
+    .slide-modal-inner img {
+      width: 100%;
+      border-radius: var(--radius);
+      box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+      display: block;
+    }
+    .slide-modal-close {
+      position: absolute;
+      top: -14px; right: -14px;
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: #fff;
+      border: none;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      box-shadow: var(--shadow-md);
+      font-size: 18px;
+      color: var(--text);
+      transition: background var(--transition), transform var(--transition);
+    }
+    .slide-modal-close:hover { background: var(--light); transform: scale(1.1); }
+    .slide-modal-nav {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(255,255,255,0.9);
+      border: none;
+      border-radius: 50%;
+      width: 40px; height: 40px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      box-shadow: var(--shadow-md);
+      transition: background var(--transition), transform var(--transition);
+    }
+    .slide-modal-nav:hover { background: #fff; transform: translateY(-50%) scale(1.1); }
+    .slide-modal-prev { left: -56px; }
+    .slide-modal-next { right: -56px; }
+    @media (max-width: 700px) {
+      .slide-modal-prev { left: 8px; }
+      .slide-modal-next { right: 8px; }
+    }
+
+    /* Toast */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 400;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+    .toast {
+      background: var(--dark);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 500;
+      padding: 14px 18px;
+      border-radius: 12px;
+      box-shadow: var(--shadow-md);
+      opacity: 0;
+      transform: translateY(12px) scale(0.95);
+      transition: opacity 0.25s, transform 0.25s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      max-width: 320px;
+      pointer-events: auto;
+    }
+    .toast.visible { opacity: 1; transform: translateY(0) scale(1); }
+    .toast.toast-success { background: var(--success); }
+    .toast.toast-error   { background: var(--error); }
+    .toast-icon { flex-shrink: 0; }
+
+    /* ── Persona URL Analyze ── */
+    .persona-analyze-bar {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px 24px;
+      margin-bottom: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .persona-analyze-bar .analyze-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .persona-analyze-bar .analyze-label span {
+      font-weight: 400;
+      color: var(--muted);
+      margin-left: 6px;
+    }
+    .analyze-input-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .analyze-input-row .form-input {
+      flex: 1;
+    }
+    .persona-analyze-status {
+      font-size: 13px;
+      color: var(--muted);
+      min-height: 18px;
+    }
+    .persona-analyze-status.loading { color: var(--primary); }
+    .persona-analyze-status.error   { color: var(--error); }
+    .persona-analyze-status.success { color: var(--success); }
+
+    /* ── Persona Edit ── */
+    .persona-card-header .persona-edit-btn {
+      margin-left: auto;
+      padding: 5px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 8px;
+      border: 1.5px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      cursor: pointer;
+      transition: background var(--transition), border-color var(--transition), color var(--transition);
+    }
+    .persona-card-header .persona-edit-btn:hover {
+      background: var(--primary-light);
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+    .persona-card-header .persona-edit-btn.editing {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+    .persona-edit-input, .persona-edit-textarea {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+      color: var(--text);
+      background: #fafafa;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+    .persona-edit-input:focus, .persona-edit-textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(232,134,42,0.1);
+      background: #fff;
+    }
+    .persona-edit-textarea { min-height: 72px; resize: vertical; line-height: 1.5; }
+    .persona-color-edit-row { display: flex; align-items: center; gap: 8px; }
+    .persona-color-edit-row input[type="color"] {
+      width: 36px; height: 36px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      padding: 2px;
+      cursor: pointer;
+      background: none;
+      flex-shrink: 0;
+    }
+    .persona-save-row {
+      margin-top: 14px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    /* ── Image Editor Modal ── */
+    .editor-modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.88);
+      backdrop-filter: blur(6px);
+      z-index: 500;
+      animation: fadeIn 0.2s ease;
+    }
+    .editor-modal-overlay.visible { display: flex; }
+
+    .editor-modal {
+      display: flex;
+      width: 100%;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Canvas area */
+    .editor-canvas-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #111;
+      position: relative;
+      overflow: hidden;
+      min-width: 0;
+    }
+
+    #editorCanvas {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      cursor: crosshair;
+      border-radius: 4px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+      display: block;
+    }
+    #editorCanvas.moving { cursor: move; }
+
+    .editor-canvas-hint {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255,255,255,0.12);
+      color: rgba(255,255,255,0.7);
+      font-size: 12px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    /* Controls panel */
+    .editor-controls {
+      width: 300px;
+      min-width: 300px;
+      background: var(--dark);
+      color: rgba(255,255,255,0.9);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      border-left: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .editor-controls-header {
+      padding: 20px 20px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .editor-controls-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -0.5px;
+    }
+
+    .editor-section {
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+    .editor-section-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.4);
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      margin-bottom: 14px;
+    }
+
+    .editor-slider-group { margin-bottom: 12px; }
+    .editor-slider-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: rgba(255,255,255,0.65);
+      margin-bottom: 6px;
+    }
+    .editor-slider-label span { color: var(--primary); font-weight: 700; }
+    input[type="range"].editor-slider {
+      width: 100%;
+      height: 4px;
+      accent-color: var(--primary);
+      cursor: pointer;
+      appearance: none;
+      background: rgba(255,255,255,0.15);
+      border-radius: 999px;
+      outline: none;
+    }
+    input[type="range"].editor-slider::-webkit-slider-thumb {
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--primary);
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(232,134,42,0.4);
+    }
+
+    /* Text overlay controls */
+    .editor-text-add-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .editor-text-add-row .form-input {
+      flex: 1;
+      padding: 8px 12px;
+      font-size: 13px;
+      background: rgba(255,255,255,0.07);
+      border-color: rgba(255,255,255,0.15);
+      color: #fff;
+    }
+    .editor-text-add-row .form-input::placeholder { color: rgba(255,255,255,0.3); }
+    .editor-text-add-row .form-input:focus {
+      background: rgba(255,255,255,0.1);
+      border-color: var(--primary);
+    }
+
+    .editor-text-props {
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+    .editor-text-props.visible { display: flex; }
+    .editor-prop-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.6);
+    }
+    .editor-prop-row label { width: 52px; flex-shrink: 0; }
+    .editor-prop-row input[type="text"],
+    .editor-prop-row input[type="number"] {
+      flex: 1;
+      padding: 6px 10px;
+      background: rgba(255,255,255,0.07);
+      border: 1.5px solid rgba(255,255,255,0.12);
+      border-radius: 6px;
+      font-size: 12px;
+      color: #fff;
+      font-family: inherit;
+    }
+    .editor-prop-row input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+    .editor-prop-row input[type="color"] {
+      width: 32px; height: 28px;
+      border: 1.5px solid rgba(255,255,255,0.15);
+      border-radius: 6px;
+      padding: 1px;
+      cursor: pointer;
+      background: none;
+      flex-shrink: 0;
+    }
+    .editor-prop-row input[type="range"] {
+      flex: 1;
+      height: 4px;
+      accent-color: var(--primary);
+      background: rgba(255,255,255,0.15);
+      border-radius: 999px;
+    }
+    .editor-bold-btn {
+      padding: 4px 10px;
+      background: rgba(255,255,255,0.1);
+      border: 1.5px solid rgba(255,255,255,0.15);
+      border-radius: 6px;
+      color: rgba(255,255,255,0.7);
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+    .editor-bold-btn.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+
+    .editor-text-list { display: flex; flex-direction: column; gap: 6px; }
+    .editor-text-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 10px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 8px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.7);
+      cursor: pointer;
+      border: 1.5px solid transparent;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .editor-text-item:hover { background: rgba(255,255,255,0.1); }
+    .editor-text-item.selected { border-color: var(--primary); background: rgba(232,134,42,0.12); color: #fff; }
+    .editor-text-item-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+    .editor-text-del {
+      background: none;
+      border: none;
+      color: rgba(255,255,255,0.35);
+      cursor: pointer;
+      font-size: 14px;
+      padding: 0 2px;
+      line-height: 1;
+      flex-shrink: 0;
+      transition: color 0.2s;
+    }
+    .editor-text-del:hover { color: var(--error); }
+
+    .editor-actions {
+      padding: 16px 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: auto;
+    }
+    .editor-actions .btn { justify-content: center; }
+
+    /* ── Footer ── */
+    .app-footer {
+      text-align: center;
+      padding: 24px 36px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: auto;
+    }
+    .app-footer a { color: var(--muted); text-decoration: none; }
+    .app-footer a:hover { color: var(--text); }
+
+    /* ── Mobile responsiveness ── */
+    @media (max-width: 768px) {
+      .sidebar { width: var(--sidebar-w-collapsed); }
+      .sidebar .logo-text,
+      .sidebar .nav-label,
+      .sidebar .usage-label,
+      .sidebar .usage-count { opacity: 0; pointer-events: none; }
+      .main-wrap { margin-left: var(--sidebar-w-collapsed); }
+      .content-area { padding: 20px 16px; }
+      .top-bar { padding: 0 20px; }
+      .stats-row { grid-template-columns: 1fr; }
+      .create-layout { grid-template-columns: 1fr; }
+      .template-grid { grid-template-columns: repeat(2, 1fr); }
+      .modal { padding: 24px; }
+    }
+
+    @media (max-width: 480px) {
+      .top-bar { height: 56px; }
+      .slides-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Sidebar ── -->
+<nav class="sidebar" id="sidebar">
+  <button class="sidebar-collapse-btn" onclick="toggleSidebar()" title="사이드바 접기/펼치기">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="15 18 9 12 15 6"/>
+    </svg>
+  </button>
+
+  <div class="sidebar-logo">
+    <div class="logo-icon">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="3" width="20" height="14" rx="2"/>
+        <path d="M8 21h8M12 17v4"/>
+      </svg>
+    </div>
+    <div class="logo-text">
+      <strong>CardFlow</strong>
+      <span>카드플로우</span>
+    </div>
+  </div>
+
+  <div class="sidebar-nav">
+    <div class="nav-item active" data-section="dashboard" data-tip="대시보드" onclick="navigate('dashboard', this)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+        <rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>
+      </svg>
+      <span class="nav-label">대시보드</span>
+    </div>
+    <div class="nav-item" data-section="create" data-tip="카드뉴스 만들기" onclick="navigate('create', this)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+      </svg>
+      <span class="nav-label">카드뉴스 만들기</span>
+    </div>
+    <div class="nav-item" data-section="sns" data-tip="SNS 연동" onclick="navigate('sns', this)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+      </svg>
+      <span class="nav-label">SNS 연동</span>
+    </div>
+    <div class="nav-item" data-section="persona" data-tip="페르소나" onclick="navigate('persona', this)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+        <circle cx="12" cy="7" r="4"/>
+      </svg>
+      <span class="nav-label">페르소나</span>
+    </div>
+    <div class="nav-item" data-section="settings" data-tip="설정" onclick="navigate('settings', this)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+      <span class="nav-label">설정</span>
+    </div>
+  </div>
+
+  <div class="sidebar-usage">
+    <div class="usage-label">이번 달 사용량</div>
+    <div class="usage-bar-wrap">
+      <div class="usage-bar" id="usageBar" style="width:0%"></div>
+    </div>
+    <div class="usage-count" id="usageCount">0 / 100</div>
+  </div>
+</nav>
+
+<!-- ── Main ── -->
+<div class="main-wrap" id="mainWrap">
+  <div class="top-bar">
+    <div class="top-bar-left">
+      <div>
+        <div class="top-bar-breadcrumb">CardFlow</div>
+        <div class="top-bar-title" id="topBarTitle">대시보드</div>
+      </div>
+    </div>
+    <div class="top-bar-right">
+      <div class="api-status">
+        <div class="status-dot"></div>
+        <span>API 정상</span>
+      </div>
+      <div class="user-avatar" id="userAvatar" title="브랜드 설정">CF</div>
+    </div>
+  </div>
+
+  <div class="content-area">
+
+    <!-- ────────────────── DASHBOARD ────────────────── -->
+    <div class="section active" id="section-dashboard">
+      <div class="welcome-msg" id="dashWelcome">안녕하세요!</div>
+      <div class="welcome-sub">오늘도 멋진 카드뉴스를 만들어보세요.</div>
+
+      <div class="stats-row">
+        <div class="stat-card orange">
+          <div class="stat-icon orange">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+            </svg>
+          </div>
+          <div class="stat-info">
+            <div class="stat-label">이번 달 생성 횟수</div>
+            <div class="stat-value" id="statGenerations">
+              <div class="skeleton skeleton-value"></div>
+            </div>
+            <div class="stat-sub">카드뉴스</div>
+          </div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-icon green">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+          </div>
+          <div class="stat-info">
+            <div class="stat-label">API 상태</div>
+            <div class="stat-value" style="font-size:18px; padding-top:4px; color: #10B981;">정상</div>
+            <div class="stat-sub">모든 서비스 연결됨</div>
+          </div>
+        </div>
+        <div class="stat-card blue">
+          <div class="stat-icon blue">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+            </svg>
+          </div>
+          <div class="stat-info">
+            <div class="stat-label">연동된 SNS</div>
+            <div class="stat-value" id="statSns">
+              <div class="skeleton skeleton-value"></div>
+            </div>
+            <div class="stat-sub">플랫폼</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-label">최근 생성 기록</div>
+      <div id="recentList" class="recent-list"></div>
+    </div>
+
+    <!-- ────────────────── CREATE ────────────────── -->
+    <div class="section" id="section-create">
+
+      <!-- Progress -->
+      <div class="progress-wrap" id="progressWrap">
+        <div class="progress-header">
+          <div class="spinner"></div>
+          <div class="progress-title">카드뉴스 생성 중...</div>
+        </div>
+
+        <!-- Step indicators -->
+        <div class="progress-steps" id="progressSteps">
+          <div class="progress-step" id="step-0">
+            <div class="step-dot">1</div>
+            <div class="step-label">기획</div>
+          </div>
+          <div class="progress-step" id="step-1">
+            <div class="step-dot">2</div>
+            <div class="step-label">리서치</div>
+          </div>
+          <div class="progress-step" id="step-2">
+            <div class="step-dot">3</div>
+            <div class="step-label">카피라이팅</div>
+          </div>
+          <div class="progress-step" id="step-3">
+            <div class="step-dot">4</div>
+            <div class="step-label">이미지 생성</div>
+          </div>
+          <div class="progress-step" id="step-4">
+            <div class="step-dot">5</div>
+            <div class="step-label">렌더링</div>
+          </div>
+        </div>
+
+        <div class="progress-msg" id="progressMsg">파이프라인 시작 중...</div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <div class="progress-pct" id="progressPct">0%</div>
+      </div>
+
+      <!-- Error -->
+      <div class="error-box" id="errorBox">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <span id="errorMsg"></span>
+      </div>
+
+      <!-- Results -->
+      <div class="results-wrap" id="resultsWrap">
+        <div class="results-header">
+          <div>
+            <span class="results-title">생성된 카드뉴스</span>
+            <span class="badge-green" id="slideBadge"></span>
+          </div>
+          <div class="results-actions">
+            <button class="btn btn-outline btn-sm" id="snsPostBtn" onclick="openSnsPost()" disabled title="SNS 연동 후 사용 가능">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+              </svg>
+              SNS 게시
+            </button>
+            <a class="btn btn-dark btn-sm" id="downloadAllBtn" href="#" onclick="downloadAll(event)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              전체 ZIP
+            </a>
+          </div>
+        </div>
+        <div class="slides-grid" id="slidesGrid"></div>
+      </div>
+
+      <div class="create-layout">
+        <!-- Left: Form -->
+        <div class="card">
+          <div class="card-title">카드뉴스 만들기</div>
+          <div class="card-desc">주제를 입력하거나 블로그 URL로 자동 추출합니다.</div>
+
+          <div class="form-group">
+            <label class="form-label">내용 / 주제</label>
+            <textarea class="form-textarea" id="topicInput" maxlength="5000"
+              placeholder="카드뉴스로 만들 내용이나 주제를 입력하세요&#10;&#10;예시:&#10;- PLLA 필러의 콜라겐 생성 원리와 효과&#10;- 이마주름 없애는 3가지 방법"></textarea>
+          </div>
+
+          <div class="divider">
+            <div class="divider-line"></div>
+            <div class="divider-text">또는</div>
+            <div class="divider-line"></div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">블로그 / 웹페이지 URL</label>
+            <input type="url" class="form-input" id="urlInput" placeholder="https://m.blog.naver.com/...">
+          </div>
+
+          <div class="form-group">
+            <label class="checkbox-row">
+              <input type="checkbox" id="extractImages">
+              블로그 이미지 추출하여 배경에 사용 <span style="color:var(--muted);font-size:12px;">(URL 입력 시)</span>
+            </label>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="slideCount">슬라이드 장수</label>
+            <select class="form-select" id="slideCount" style="width:auto;">
+              <option value="3">3장</option>
+              <option value="5" selected>5장</option>
+              <option value="7">7장</option>
+              <option value="10">10장</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">제품 이미지 업로드 <span>(선택 — AI 생성 대신 사용)</span></label>
+            <div class="upload-area" id="uploadArea" onclick="document.getElementById('imageFileInput').click()"
+                 ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+              <div class="upload-icon-wrap">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+                  <polyline points="21 15 16 10 5 21"/>
+                </svg>
+              </div>
+              <p><strong>클릭하거나 드래그</strong>하여 이미지 추가</p>
+              <p class="upload-hint">JPG, PNG, WEBP · 여러 장 가능</p>
+              <div class="upload-preview" id="uploadPreview"></div>
+            </div>
+            <input type="file" id="imageFileInput" accept="image/*" multiple style="display:none" onchange="handleFileSelect(event)">
+          </div>
+
+          <button class="btn btn-primary" id="generateBtn" onclick="startGenerate()" style="width:100%; justify-content:center; padding:15px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+            </svg>
+            카드뉴스 생성
+          </button>
+        </div>
+
+        <!-- Right: Template selector -->
+        <div class="card">
+          <div class="card-title">템플릿 스타일</div>
+          <div class="card-desc">슬라이드에 적용할 디자인 스타일을 선택하세요.</div>
+
+          <div class="template-grid">
+            <div class="tpl-card selected" data-style="mix" onclick="selectTemplate(this)">
+              <div class="tpl-preview style-mix">
+                <div class="mix-cell"><span>A</span></div>
+                <div class="mix-cell"><span>B</span></div>
+                <div class="mix-cell"><span>C</span></div>
+                <div class="mix-cell"><span>A</span></div>
+              </div>
+              <div class="tpl-name">믹스 (자동)</div>
+            </div>
+            <div class="tpl-card" data-style="A" onclick="selectTemplate(this)">
+              <div class="tpl-preview style-a">
+                <div class="tpl-tag">Point 01</div>
+                <div class="tpl-title">밝은 오버레이</div>
+              </div>
+              <div class="tpl-name">Style A</div>
+            </div>
+            <div class="tpl-card" data-style="B" onclick="selectTemplate(this)">
+              <div class="tpl-preview style-b">
+                <div class="tpl-bar"><span>Brand</span><span>CF</span></div>
+                <div class="tpl-body"><div class="tpl-title">오렌지 헤더</div></div>
+              </div>
+              <div class="tpl-name">Style B</div>
+            </div>
+            <div class="tpl-card" data-style="C" onclick="selectTemplate(this)">
+              <div class="tpl-preview style-c">
+                <div class="tpl-tag">Point 01</div>
+                <div class="tpl-title">다크 시네마틱</div>
+              </div>
+              <div class="tpl-name">Style C</div>
+            </div>
+          </div>
+
+          <div style="margin-top:20px; background:var(--primary-light); border-radius:10px; padding:16px; font-size:13px; color:var(--primary-dark); line-height:1.6; border-left: 3px solid var(--primary);">
+            <strong>팁:</strong> 믹스(자동) 스타일은 각 슬라이드마다 A·B·C 스타일을 번갈아 적용해 다채로운 카드뉴스를 만들어줍니다.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ────────────────── SNS ────────────────── -->
+    <div class="section" id="section-sns">
+      <div style="margin-bottom:28px;">
+        <div class="welcome-msg" style="font-size:22px;">SNS 연동</div>
+        <div class="welcome-sub">계정을 연결하면 페르소나 분석과 자동 게시가 가능합니다.</div>
+      </div>
+
+      <div class="sns-grid">
+        <!-- Instagram -->
+        <div class="sns-card" id="instagramCard">
+          <div class="sns-card-header">
+            <div class="sns-icon instagram">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
+              </svg>
+            </div>
+            <div>
+              <div class="sns-card-name">Instagram</div>
+              <div class="sns-card-status" id="igStatus">미연결</div>
+            </div>
+          </div>
+
+          <div class="sns-profile" id="igProfile">
+            <div class="sns-profile-row">
+              <div class="sns-avatar" id="igAvatar">👤</div>
+              <div>
+                <div style="font-size:14px; font-weight:700;" id="igUsername">@username</div>
+                <div style="font-size:12px; color:var(--muted);" id="igBio"></div>
+              </div>
+            </div>
+            <div class="sns-stats">
+              <div class="sns-stat">
+                <div class="sns-stat-value" id="igFollowers">0</div>
+                <div class="sns-stat-label">팔로워</div>
+              </div>
+              <div class="sns-stat">
+                <div class="sns-stat-value" id="igFollowing">0</div>
+                <div class="sns-stat-label">팔로잉</div>
+              </div>
+              <div class="sns-stat">
+                <div class="sns-stat-value" id="igPosts">0</div>
+                <div class="sns-stat-label">게시물</div>
+              </div>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-primary btn-sm" onclick="analyzeInstagram()">분석하기</button>
+              <button class="btn btn-outline btn-sm" onclick="disconnectInstagram()">연결 해제</button>
+            </div>
+          </div>
+
+          <div class="instagram-connect-form" id="igConnectForm">
+            <div class="form-group">
+              <label class="form-label">Instagram 프로필 URL</label>
+              <input type="text" class="form-input" id="igUrlInput" placeholder="https://www.instagram.com/username/">
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-primary btn-sm" onclick="analyzeInstagramByUrl()">페르소나 분석</button>
+              <button class="btn btn-outline btn-sm" onclick="cancelConnect()">취소</button>
+            </div>
+          </div>
+
+          <div id="igNotConnected">
+            <button class="btn btn-outline btn-sm" onclick="showConnectForm()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              URL로 분석하기
+            </button>
+          </div>
+        </div>
+
+        <!-- Blog (coming soon) -->
+        <div class="sns-card">
+          <div class="sns-card-header">
+            <div class="sns-icon blog">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+              </svg>
+            </div>
+            <div>
+              <div class="sns-card-name">블로그 (네이버)</div>
+              <div class="sns-card-status">준비 중</div>
+            </div>
+          </div>
+          <span class="coming-soon-badge">Coming Soon</span>
+        </div>
+
+        <!-- Facebook (coming soon) -->
+        <div class="sns-card">
+          <div class="sns-card-header">
+            <div class="sns-icon facebook">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
+              </svg>
+            </div>
+            <div>
+              <div class="sns-card-name">Facebook</div>
+              <div class="sns-card-status">준비 중</div>
+            </div>
+          </div>
+          <span class="coming-soon-badge">Coming Soon</span>
+        </div>
+
+        <!-- Threads (coming soon) -->
+        <div class="sns-card">
+          <div class="sns-card-header">
+            <div class="sns-icon threads">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 8c-2.2 0-4 1.8-4 4s1.8 4 4 4 4-1.8 4-4"/>
+                <path d="M12 8v2M16 12h-2"/>
+              </svg>
+            </div>
+            <div>
+              <div class="sns-card-name">스레드 (Threads)</div>
+              <div class="sns-card-status">준비 중</div>
+            </div>
+          </div>
+          <span class="coming-soon-badge">Coming Soon</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ────────────────── PERSONA ────────────────── -->
+    <div class="section" id="section-persona">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+        <div>
+          <div class="welcome-msg" style="font-size:22px;">페르소나</div>
+          <div class="welcome-sub">브랜드 아이덴티티와 콘텐츠 스타일 분석 결과입니다.</div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="reanalyzePersona()" id="reanalyzeBtn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"/>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+          </svg>
+          페르소나 재분석
+        </button>
+      </div>
+
+      <!-- URL 분석 바 -->
+      <div class="persona-analyze-bar">
+        <div class="analyze-label">
+          인스타그램 URL을 입력하여 페르소나를 분석하세요
+          <span>SNS 연동 없이 직접 분석 가능합니다</span>
+        </div>
+        <div class="analyze-input-row">
+          <input type="url" class="form-input" id="personaUrlInput" placeholder="https://www.instagram.com/username/">
+          <button class="btn btn-primary btn-sm" id="personaAnalyzeBtn" onclick="analyzePersonaByUrl()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            분석하기
+          </button>
+        </div>
+        <div class="persona-analyze-status" id="personaAnalyzeStatus"></div>
+      </div>
+
+      <div id="personaNoSns" class="persona-no-sns" style="display:none;">
+        <div style="margin-bottom:20px;">
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.3; display:block; margin:0 auto;">
+            <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+          </svg>
+        </div>
+        <h3>SNS 계정을 먼저 연결해주세요</h3>
+        <p>Instagram 계정을 연결하면 게시물을 분석하여<br>브랜드 페르소나를 자동으로 생성합니다.</p>
+        <button class="btn btn-primary" onclick="navigate('sns', document.querySelector('[data-section=sns]'))">SNS 연동하기</button>
+      </div>
+
+      <div id="personaContent">
+        <div class="persona-grid">
+          <!-- Brand Info -->
+          <div class="persona-card" id="pCardBrand">
+            <div class="persona-card-header">
+              <div class="persona-card-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                </svg>
+              </div>
+              <div class="persona-card-title">브랜드 정보</div>
+              <button class="persona-edit-btn" onclick="togglePersonaEdit('brand')">편집</button>
+            </div>
+            <!-- Display mode -->
+            <div id="pBrandDisplay">
+              <div class="persona-field">
+                <label>브랜드명</label>
+                <div class="persona-field-val" id="pBrandName">—</div>
+              </div>
+              <div class="persona-field">
+                <label>태그라인</label>
+                <div class="persona-field-val" id="pTagline">—</div>
+              </div>
+              <div class="persona-field">
+                <label>메인 컬러</label>
+                <div class="persona-field-val" id="pMainColor">—</div>
+              </div>
+              <div class="persona-field">
+                <label>서브 컬러</label>
+                <div class="persona-field-val" id="pSubColor">—</div>
+              </div>
+            </div>
+            <!-- Edit mode -->
+            <div id="pBrandEdit" style="display:none;">
+              <div class="persona-field">
+                <label>브랜드명</label>
+                <input type="text" class="persona-edit-input" id="eBrandName" placeholder="브랜드명">
+              </div>
+              <div class="persona-field">
+                <label>태그라인</label>
+                <input type="text" class="persona-edit-input" id="eTagline" placeholder="태그라인">
+              </div>
+              <div class="persona-field">
+                <label>메인 컬러</label>
+                <div class="persona-color-edit-row">
+                  <input type="color" id="eMainColorPicker" oninput="document.getElementById('eMainColor').value=this.value">
+                  <input type="text" class="persona-edit-input" id="eMainColor" placeholder="#E8862A"
+                    oninput="if(this.value.match(/^#[0-9a-fA-F]{6}$/)) document.getElementById('eMainColorPicker').value=this.value">
+                </div>
+              </div>
+              <div class="persona-field">
+                <label>서브 컬러</label>
+                <div class="persona-color-edit-row">
+                  <input type="color" id="eSubColorPicker" oninput="document.getElementById('eSubColor').value=this.value">
+                  <input type="text" class="persona-edit-input" id="eSubColor" placeholder="#F5F3F0"
+                    oninput="if(this.value.match(/^#[0-9a-fA-F]{6}$/)) document.getElementById('eSubColorPicker').value=this.value">
+                </div>
+              </div>
+              <div class="persona-save-row">
+                <button class="btn btn-outline btn-sm" onclick="togglePersonaEdit('brand')">취소</button>
+                <button class="btn btn-primary btn-sm" onclick="savePersonaSection('brand')">저장</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Copy Style -->
+          <div class="persona-card" id="pCardCopy">
+            <div class="persona-card-header">
+              <div class="persona-card-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                </svg>
+              </div>
+              <div class="persona-card-title">카피 스타일</div>
+              <button class="persona-edit-btn" onclick="togglePersonaEdit('copy')">편집</button>
+            </div>
+            <!-- Display mode -->
+            <div id="pCopyDisplay">
+              <div class="persona-field">
+                <label>톤앤매너</label>
+                <div class="persona-field-val" id="pTone">—</div>
+              </div>
+              <div class="persona-field">
+                <label>핵심 표현</label>
+                <div id="pKeyPhrases" class="tag-list"></div>
+              </div>
+              <div class="persona-field">
+                <label>훅 문구</label>
+                <div id="pHooks" class="tag-list"></div>
+              </div>
+            </div>
+            <!-- Edit mode -->
+            <div id="pCopyEdit" style="display:none;">
+              <div class="persona-field">
+                <label>톤앤매너</label>
+                <textarea class="persona-edit-textarea" id="eTone" placeholder="톤앤매너 설명"></textarea>
+              </div>
+              <div class="persona-field">
+                <label>핵심 표현 <span style="font-weight:400;color:var(--muted);font-size:11px;">(쉼표로 구분)</span></label>
+                <input type="text" class="persona-edit-input" id="eKeyPhrases" placeholder="표현1, 표현2, 표현3">
+              </div>
+              <div class="persona-field">
+                <label>훅 문구 <span style="font-weight:400;color:var(--muted);font-size:11px;">(쉼표로 구분)</span></label>
+                <input type="text" class="persona-edit-input" id="eHooks" placeholder="훅1, 훅2, 훅3">
+              </div>
+              <div class="persona-save-row">
+                <button class="btn btn-outline btn-sm" onclick="togglePersonaEdit('copy')">취소</button>
+                <button class="btn btn-primary btn-sm" onclick="savePersonaSection('copy')">저장</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Visual Style -->
+          <div class="persona-card" id="pCardVisual">
+            <div class="persona-card-header">
+              <div class="persona-card-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/>
+                  <line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/>
+                  <line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/>
+                </svg>
+              </div>
+              <div class="persona-card-title">비주얼 스타일</div>
+              <button class="persona-edit-btn" onclick="togglePersonaEdit('visual')">편집</button>
+            </div>
+            <!-- Display mode -->
+            <div id="pVisualDisplay">
+              <div class="persona-field">
+                <label>색상 팔레트</label>
+                <div id="pColors" class="tag-list"></div>
+              </div>
+              <div class="persona-field">
+                <label>이미지 유형</label>
+                <div id="pImageTypes" class="tag-list"></div>
+              </div>
+            </div>
+            <!-- Edit mode -->
+            <div id="pVisualEdit" style="display:none;">
+              <div class="persona-field">
+                <label>색상 팔레트 <span style="font-weight:400;color:var(--muted);font-size:11px;">(쉼표로 구분, 예: #E8862A, #fff)</span></label>
+                <input type="text" class="persona-edit-input" id="eColors" placeholder="#색상1, #색상2">
+              </div>
+              <div class="persona-field">
+                <label>이미지 유형 <span style="font-weight:400;color:var(--muted);font-size:11px;">(쉼표로 구분)</span></label>
+                <input type="text" class="persona-edit-input" id="eImageTypes" placeholder="제품샷, 라이프스타일, 텍스트카드">
+              </div>
+              <div class="persona-save-row">
+                <button class="btn btn-outline btn-sm" onclick="togglePersonaEdit('visual')">취소</button>
+                <button class="btn btn-primary btn-sm" onclick="savePersonaSection('visual')">저장</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Target & Hashtags -->
+          <div class="persona-card" id="pCardTarget">
+            <div class="persona-card-header">
+              <div class="persona-card-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                </svg>
+              </div>
+              <div class="persona-card-title">타겟 & 해시태그</div>
+              <button class="persona-edit-btn" onclick="togglePersonaEdit('target')">편집</button>
+            </div>
+            <!-- Display mode -->
+            <div id="pTargetDisplay">
+              <div class="persona-field">
+                <label>타겟 독자</label>
+                <div class="persona-field-val" id="pTarget">—</div>
+              </div>
+              <div class="persona-field">
+                <label>인기 해시태그</label>
+                <div id="pHashtags" class="tag-list"></div>
+              </div>
+            </div>
+            <!-- Edit mode -->
+            <div id="pTargetEdit" style="display:none;">
+              <div class="persona-field">
+                <label>타겟 독자</label>
+                <textarea class="persona-edit-textarea" id="eTarget" placeholder="타겟 독자 설명"></textarea>
+              </div>
+              <div class="persona-field">
+                <label>인기 해시태그 <span style="font-weight:400;color:var(--muted);font-size:11px;">(쉼표로 구분)</span></label>
+                <input type="text" class="persona-edit-input" id="eHashtags" placeholder="#태그1, #태그2, #태그3">
+              </div>
+              <div class="persona-save-row">
+                <button class="btn btn-outline btn-sm" onclick="togglePersonaEdit('target')">취소</button>
+                <button class="btn btn-primary btn-sm" onclick="savePersonaSection('target')">저장</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ────────────────── SETTINGS ────────────────── -->
+    <div class="section" id="section-settings">
+      <div style="margin-bottom:28px;">
+        <div class="welcome-msg" style="font-size:22px;">설정</div>
+        <div class="welcome-sub">API 키와 브랜드 기본값을 관리합니다.</div>
+      </div>
+
+      <div class="card" style="margin-bottom:20px;">
+        <div class="settings-section-title">API 설정</div>
+
+        <div class="form-group">
+          <label class="form-label">OpenRouter API Key</label>
+          <div class="input-group">
+            <input type="password" class="form-input" id="settingOpenrouterKey" placeholder="sk-or-...">
+            <button class="toggle-visibility" onclick="togglePasswordVisibility('settingOpenrouterKey', this)" type="button">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">HuggingFace Token</label>
+          <div class="input-group">
+            <input type="password" class="form-input" id="settingHfToken" placeholder="hf_...">
+            <button class="toggle-visibility" onclick="togglePasswordVisibility('settingHfToken', this)" type="button">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="settings-section-title">브랜드 기본값</div>
+
+        <div class="form-group">
+          <label class="form-label" for="settingBrandName">브랜드명</label>
+          <input type="text" class="form-input" id="settingBrandName" placeholder="브랜드 이름">
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+          <div class="form-group">
+            <label class="form-label">메인 컬러</label>
+            <div class="color-input-row">
+              <input type="color" id="settingMainColor" value="#E8862A" oninput="document.getElementById('settingMainColorText').value=this.value">
+              <input type="text" class="form-input" id="settingMainColorText" value="#E8862A" placeholder="#E8862A"
+                oninput="if(this.value.match(/^#[0-9a-fA-F]{6}$/)) document.getElementById('settingMainColor').value=this.value">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">서브 컬러</label>
+            <div class="color-input-row">
+              <input type="color" id="settingSubColor" value="#F5F3F0" oninput="document.getElementById('settingSubColorText').value=this.value">
+              <input type="text" class="form-input" id="settingSubColorText" value="#F5F3F0" placeholder="#F5F3F0"
+                oninput="if(this.value.match(/^#[0-9a-fA-F]{6}$/)) document.getElementById('settingSubColor').value=this.value">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">타겟 독자</label>
+          <input type="text" class="form-input" id="settingTarget" placeholder="예: 피부 노화에 관심있는 30~50대 여성">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">CTA 문구</label>
+          <input type="text" class="form-input" id="settingCta" placeholder="예: 공식 인스타그램에서 더 많은 정보를 확인하세요">
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; margin-top:8px;">
+          <button class="btn btn-primary" onclick="saveSettings()">저장하기</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content-area -->
+
+  <footer class="app-footer">
+    CardFlow v1.0.0 &nbsp;·&nbsp; AI 카드뉴스 플랫폼 &nbsp;·&nbsp; 올리디아(Olidia) 브랜드 전용
+  </footer>
+</div><!-- /main-wrap -->
+
+<!-- ── Instagram Login Modal ── -->
+<div class="modal-overlay" id="igModal">
+  <div class="modal">
+    <div class="modal-title">Instagram 연결</div>
+    <div class="modal-desc">계정 정보를 입력하면 instagrapi로 안전하게 연결합니다.<br>비밀번호는 서버에 저장되지 않습니다.</div>
+    <div class="form-group">
+      <label class="form-label">사용자명</label>
+      <input type="text" class="form-input" id="modalIgUsername" placeholder="@username">
+    </div>
+    <div class="form-group">
+      <label class="form-label">비밀번호</label>
+      <input type="password" class="form-input" id="modalIgPassword" placeholder="비밀번호">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeIgModal()">취소</button>
+      <button class="btn btn-primary" id="igConnectBtn" onclick="doInstagramConnect()">연결하기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Slide Preview Modal ── -->
+<div class="slide-modal-overlay" id="slideModal" onclick="closeSlideModal(event)">
+  <div class="slide-modal-inner" id="slideModalInner">
+    <button class="slide-modal-close" onclick="closeSlideModalDirect()">&#x2715;</button>
+    <button class="slide-modal-nav slide-modal-prev" onclick="slideModalNav(-1)" id="slideModalPrev">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+    </button>
+    <img id="slideModalImg" src="" alt="슬라이드 미리보기">
+    <button class="slide-modal-nav slide-modal-next" onclick="slideModalNav(1)" id="slideModalNext">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ── Image Editor Modal ── -->
+<div class="editor-modal-overlay" id="editorModal">
+  <div class="editor-modal">
+    <!-- Canvas area -->
+    <div class="editor-canvas-area">
+      <canvas id="editorCanvas"></canvas>
+      <div class="editor-canvas-hint">클릭하여 텍스트 추가 · 드래그하여 이동</div>
+    </div>
+
+    <!-- Controls panel -->
+    <div class="editor-controls">
+      <div class="editor-controls-header">
+        <div class="editor-controls-title">슬라이드 편집</div>
+      </div>
+
+      <!-- Adjustments -->
+      <div class="editor-section">
+        <div class="editor-section-title">이미지 조정</div>
+        <div class="editor-slider-group">
+          <div class="editor-slider-label">밝기 <span id="brightnessVal">0</span></div>
+          <input type="range" class="editor-slider" id="brightnessSlider" min="-100" max="100" value="0" oninput="updateFilter()">
+        </div>
+        <div class="editor-slider-group">
+          <div class="editor-slider-label">대비 <span id="contrastVal">0</span></div>
+          <input type="range" class="editor-slider" id="contrastSlider" min="-100" max="100" value="0" oninput="updateFilter()">
+        </div>
+        <div class="editor-slider-group">
+          <div class="editor-slider-label">채도 <span id="saturationVal">0</span></div>
+          <input type="range" class="editor-slider" id="saturationSlider" min="-100" max="100" value="0" oninput="updateFilter()">
+        </div>
+      </div>
+
+      <!-- Text overlays -->
+      <div class="editor-section">
+        <div class="editor-section-title">텍스트 오버레이</div>
+        <div class="editor-text-add-row">
+          <input type="text" class="form-input" id="editorTextInput" placeholder="추가할 텍스트 입력...">
+          <button class="btn btn-primary btn-sm" onclick="addTextOverlay()">추가</button>
+        </div>
+
+        <!-- Selected text properties -->
+        <div class="editor-text-props" id="editorTextProps">
+          <div class="editor-prop-row">
+            <label>내용</label>
+            <input type="text" id="propTextContent" oninput="updateSelectedText('content', this.value)">
+          </div>
+          <div class="editor-prop-row">
+            <label>크기</label>
+            <input type="range" min="16" max="80" value="36" id="propFontSize" oninput="updateSelectedText('size', parseInt(this.value)); document.getElementById('propFontSizeVal').textContent=this.value+'px'">
+            <span id="propFontSizeVal" style="color:var(--primary);font-size:11px;width:32px;flex-shrink:0;">36px</span>
+          </div>
+          <div class="editor-prop-row">
+            <label>색상</label>
+            <input type="color" id="propTextColor" value="#ffffff" oninput="updateSelectedText('color', this.value)">
+            <span style="font-size:11px;color:rgba(255,255,255,0.4);">텍스트 색</span>
+          </div>
+          <div class="editor-prop-row">
+            <label>굵기</label>
+            <button class="editor-bold-btn" id="propBoldBtn" onclick="toggleTextBold()">B</button>
+          </div>
+        </div>
+
+        <!-- Text items list -->
+        <div class="editor-text-list" id="editorTextList">
+          <div style="font-size:12px;color:rgba(255,255,255,0.3);text-align:center;padding:8px 0;">추가된 텍스트가 없습니다</div>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="editor-actions">
+        <button class="btn btn-outline btn-sm" onclick="resetEditor()" style="color:rgba(255,255,255,0.7);border-color:rgba(255,255,255,0.2);">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/>
+          </svg>
+          초기화
+        </button>
+        <button class="btn btn-primary btn-sm" onclick="downloadEdited()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          다운로드
+        </button>
+        <button class="btn btn-dark btn-sm" onclick="closeEditor()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+          닫기
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ──────────────────────────────────────────
+     State
+  ────────────────────────────────────────── */
+  let currentJobId = null;
+  let pollTimer = null;
+  let uploadedImagePaths = [];
+  let pendingFiles = [];
+  let selectedTemplate = 'mix';
+  let currentPersona = null;
+  let sidebarCollapsed = false;
+  let currentSlides = [];
+  let slideModalIdx = 0;
+
+  /* ──────────────────────────────────────────
+     Sidebar collapse
+  ────────────────────────────────────────── */
+  function toggleSidebar() {
+    sidebarCollapsed = !sidebarCollapsed;
+    document.getElementById('sidebar').classList.toggle('collapsed', sidebarCollapsed);
+    document.getElementById('mainWrap').classList.toggle('collapsed', sidebarCollapsed);
+  }
+
+  /* ──────────────────────────────────────────
+     Navigation
+  ────────────────────────────────────────── */
+  const sectionTitles = {
+    dashboard: '대시보드',
+    create: '카드뉴스 만들기',
+    sns: 'SNS 연동',
+    persona: '페르소나',
+    settings: '설정',
+  };
+
+  function navigate(sectionId, navEl) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+    const section = document.getElementById('section-' + sectionId);
+    if (section) section.classList.add('active');
+    if (navEl) navEl.classList.add('active');
+
+    document.getElementById('topBarTitle').textContent = sectionTitles[sectionId] || '';
+
+    if (sectionId === 'dashboard') refreshDashboard();
+    if (sectionId === 'persona') loadPersona();
+    if (sectionId === 'settings') loadSettings();
+  }
+
+  /* ──────────────────────────────────────────
+     Toast system
+  ────────────────────────────────────────── */
+  function showToast(msg, type = 'default', duration = 3200) {
+    const container = document.getElementById('toastContainer');
+    const t = document.createElement('div');
+    t.className = 'toast' + (type === 'success' ? ' toast-success' : type === 'error' ? ' toast-error' : '');
+
+    const icon = type === 'success'
+      ? '<svg class="toast-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
+      : type === 'error'
+        ? '<svg class="toast-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>'
+        : '<svg class="toast-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
+
+    t.innerHTML = icon + '<span>' + escapeHtml(msg) + '</span>';
+    container.appendChild(t);
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => t.classList.add('visible'));
+    });
+
+    setTimeout(() => {
+      t.classList.remove('visible');
+      setTimeout(() => t.remove(), 300);
+    }, duration);
+  }
+
+  /* ──────────────────────────────────────────
+     Dashboard
+  ────────────────────────────────────────── */
+  async function refreshDashboard() {
+    try {
+      const res = await fetch('/api/usage');
+      const data = await res.json();
+      const gen = data.generations || 0;
+      document.getElementById('statGenerations').textContent = gen;
+      document.getElementById('usageBar').style.width = Math.min(gen, 100) + '%';
+      document.getElementById('usageCount').textContent = gen + ' / 100';
+    } catch(e) {
+      document.getElementById('statGenerations').textContent = '—';
+    }
+
+    const igProfile = JSON.parse(localStorage.getItem('igProfile') || 'null');
+    document.getElementById('statSns').textContent = igProfile ? '1' : '0';
+
+    const brandName = localStorage.getItem('brandName') || 'CardFlow';
+    document.getElementById('dashWelcome').textContent = '안녕하세요, ' + brandName + '!';
+    document.getElementById('userAvatar').textContent = brandName.slice(0, 2).toUpperCase();
+
+    const recent = JSON.parse(localStorage.getItem('recentGenerations') || '[]');
+    const listEl = document.getElementById('recentList');
+
+    if (recent.length === 0) {
+      listEl.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">
+            <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.3;">
+              <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+              <line x1="9" y1="10" x2="15" y2="10"/><line x1="9" y1="13" x2="13" y2="13"/>
+            </svg>
+          </div>
+          <div class="empty-state-title">생성된 카드뉴스가 없어요</div>
+          <p>카드뉴스 만들기 탭에서<br>첫 번째 카드뉴스를 생성해보세요!</p>
+        </div>`;
+    } else {
+      listEl.innerHTML = recent.slice(0, 5).map(item => `
+        <div class="recent-item">
+          <div class="recent-item-info">
+            <div class="recent-item-topic">${escapeHtml(item.topic || '(제목 없음)')}</div>
+            <div class="recent-item-meta">${item.date} · ${item.slideCount}장 · ${item.template} 템플릿</div>
+          </div>
+          <div class="recent-item-badge">${item.slideCount}장</div>
+        </div>
+      `).join('');
+    }
+
+    document.getElementById('snsPostBtn').disabled = !igProfile;
+  }
+
+  function addRecentGeneration(topic, slideCount, template) {
+    const recent = JSON.parse(localStorage.getItem('recentGenerations') || '[]');
+    recent.unshift({
+      topic: topic.slice(0, 60),
+      date: new Date().toLocaleDateString('ko-KR'),
+      slideCount,
+      template,
+    });
+    if (recent.length > 20) recent.pop();
+    localStorage.setItem('recentGenerations', JSON.stringify(recent));
+  }
+
+  /* ──────────────────────────────────────────
+     Template selection
+  ────────────────────────────────────────── */
+  function selectTemplate(el) {
+    document.querySelectorAll('.tpl-card').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedTemplate = el.dataset.style;
+  }
+
+  /* ──────────────────────────────────────────
+     Image upload
+  ────────────────────────────────────────── */
+  function handleDragOver(e) {
+    e.preventDefault();
+    document.getElementById('uploadArea').classList.add('dragover');
+  }
+
+  function handleDragLeave(e) {
+    document.getElementById('uploadArea').classList.remove('dragover');
+  }
+
+  function handleDrop(e) {
+    e.preventDefault();
+    document.getElementById('uploadArea').classList.remove('dragover');
+    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+    addFiles(files);
+  }
+
+  function handleFileSelect(e) {
+    const files = Array.from(e.target.files);
+    addFiles(files);
+    e.target.value = '';
+  }
+
+  function addFiles(files) {
+    files.forEach(f => {
+      pendingFiles.push(f);
+      renderPreview(f, pendingFiles.length - 1);
+    });
+  }
+
+  function renderPreview(file, idx) {
+    const preview = document.getElementById('uploadPreview');
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const item = document.createElement('div');
+      item.className = 'preview-item';
+      item.dataset.idx = idx;
+      item.innerHTML = `<img src="${e.target.result}" alt=""><button class="remove-btn" onclick="removeFile(${idx}, this.parentNode)">&#x2715;</button>`;
+      preview.appendChild(item);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function removeFile(idx, el) {
+    pendingFiles[idx] = null;
+    el.remove();
+  }
+
+  async function uploadFiles() {
+    const validFiles = pendingFiles.filter(f => f !== null);
+    if (validFiles.length === 0) return [];
+
+    const formData = new FormData();
+    validFiles.forEach(f => formData.append('images', f));
+
+    const res = await fetch('/upload', { method: 'POST', body: formData });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    return data.paths || [];
+  }
+
+  /* ──────────────────────────────────────────
+     Progress steps
+  ────────────────────────────────────────── */
+  const STEP_THRESHOLDS = [0, 20, 45, 65, 88];
+  const STEP_LABELS = ['기획', '리서치', '카피라이팅', '이미지 생성', '렌더링'];
+
+  function updateSteps(pct) {
+    STEP_THRESHOLDS.forEach((threshold, i) => {
+      const stepEl = document.getElementById('step-' + i);
+      if (!stepEl) return;
+      const dot = stepEl.querySelector('.step-dot');
+      const nextThreshold = STEP_THRESHOLDS[i + 1] || 101;
+
+      stepEl.classList.remove('active', 'done');
+      dot.classList.remove('active', 'done');
+
+      if (pct >= nextThreshold) {
+        stepEl.classList.add('done');
+        dot.classList.add('done');
+        dot.innerHTML = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+      } else if (pct >= threshold) {
+        stepEl.classList.add('active');
+        dot.classList.add('active');
+        dot.textContent = i + 1;
+      } else {
+        dot.textContent = i + 1;
+      }
+    });
+  }
+
+  /* ──────────────────────────────────────────
+     Generate
+  ────────────────────────────────────────── */
+  async function startGenerate() {
+    const topic = document.getElementById('topicInput').value.trim();
+    const url = document.getElementById('urlInput').value.trim();
+    const extractImages = document.getElementById('extractImages').checked;
+    const slideCount = parseInt(document.getElementById('slideCount').value) || 5;
+
+    if (!topic && !url) {
+      showToast('내용 또는 URL을 입력해주세요.', 'error');
+      return;
+    }
+
+    hideResults();
+    hideError();
+    showProgress();
+    setGenerateBtn(true);
+
+    try {
+      let imagePaths = [];
+      if (pendingFiles.some(f => f !== null)) {
+        updateProgressMsg('이미지 업로드 중...');
+        imagePaths = await uploadFiles();
+        uploadedImagePaths = imagePaths;
+      }
+
+      const res = await fetch('/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topic, url, extract_images: extractImages,
+          slide_count: slideCount, template_style: selectedTemplate,
+          uploaded_images: uploadedImagePaths,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      currentJobId = data.job_id;
+      pollStatus();
+
+      addRecentGeneration(topic || url, slideCount, selectedTemplate);
+
+    } catch(e) {
+      hideProgress();
+      showError(e.message);
+      setGenerateBtn(false);
+    }
+  }
+
+  function pollStatus() {
+    if (!currentJobId) return;
+    pollTimer = setTimeout(async () => {
+      try {
+        const res = await fetch('/status/' + currentJobId);
+        const data = await res.json();
+
+        const pct = data.progress || 0;
+        updateProgressBar(pct);
+        updateProgressMsg(data.message || '');
+        updateSteps(pct);
+
+        if (data.status === 'done') {
+          updateSteps(100);
+          setTimeout(() => {
+            hideProgress();
+            setGenerateBtn(false);
+            renderResults(data.slides || []);
+            showToast('카드뉴스 생성 완료!', 'success');
+          }, 400);
+        } else if (data.status === 'error') {
+          hideProgress();
+          setGenerateBtn(false);
+          showError(data.message || '알 수 없는 오류가 발생했습니다.');
+          showToast('생성에 실패했습니다.', 'error');
+        } else {
+          pollStatus();
+        }
+      } catch(e) {
+        pollStatus();
+      }
+    }, 1500);
+  }
+
+  function renderResults(slides) {
+    currentSlides = slides;
+    const grid = document.getElementById('slidesGrid');
+    const badge = document.getElementById('slideBadge');
+    badge.textContent = slides.length + '장 생성됨';
+
+    grid.innerHTML = slides.map((s, i) => {
+      const typeClass = s.slide_type === 'cover' ? 'cover' : s.slide_type === 'last' ? 'last' : 'content';
+      const typeLabel = s.slide_type === 'cover' ? '표지' : s.slide_type === 'last' ? '마무리' : '내용';
+      const imgSrc = s.png_exists ? `/slide/${currentJobId}/${i}` : '';
+      return `
+        <div class="slide-card" onclick="openSlideModal(${i})">
+          <div class="slide-img-wrap">
+            ${imgSrc
+              ? `<img src="${imgSrc}" alt="슬라이드 ${i+1}" loading="lazy">`
+              : `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:rgba(255,255,255,0.3);font-size:13px;">이미지 없음</div>`
+            }
+            <div class="slide-num">${i + 1}</div>
+            <div class="slide-type-badge ${typeClass}">${typeLabel}</div>
+            <div class="slide-img-overlay">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                <line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>
+              </svg>
+            </div>
+          </div>
+          <div class="slide-info">
+            <div class="slide-heading">${escapeHtml(s.heading || '')}</div>
+            <div class="slide-actions">
+              <a class="btn btn-light btn-sm" href="/download/${currentJobId}/${i}" download="slide_${String(i+1).padStart(2,'0')}.png" onclick="event.stopPropagation()">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                저장
+              </a>
+              ${imgSrc ? `<button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); openEditor('${imgSrc}', ${i})">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+                편집
+              </button>` : ''}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    showResults();
+    document.getElementById('resultsWrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function downloadAll(e) {
+    e.preventDefault();
+    if (!currentJobId) return;
+    window.location.href = '/download-all/' + currentJobId;
+  }
+
+  /* ──────────────────────────────────────────
+     Slide preview modal
+  ────────────────────────────────────────── */
+  function openSlideModal(idx) {
+    if (!currentSlides[idx] || !currentSlides[idx].png_exists) return;
+    slideModalIdx = idx;
+    const imgSrc = `/slide/${currentJobId}/${idx}`;
+    document.getElementById('slideModalImg').src = imgSrc;
+    document.getElementById('slideModal').classList.add('visible');
+    updateSlideModalNav();
+    document.body.style.overflow = 'hidden';
+  }
+
+  function updateSlideModalNav() {
+    const hasImg = s => currentSlides[s] && currentSlides[s].png_exists;
+    document.getElementById('slideModalPrev').style.opacity = slideModalIdx > 0 && hasImg(slideModalIdx - 1) ? '1' : '0.3';
+    document.getElementById('slideModalNext').style.opacity = slideModalIdx < currentSlides.length - 1 && hasImg(slideModalIdx + 1) ? '1' : '0.3';
+  }
+
+  function slideModalNav(dir) {
+    const newIdx = slideModalIdx + dir;
+    if (newIdx >= 0 && newIdx < currentSlides.length && currentSlides[newIdx].png_exists) {
+      slideModalIdx = newIdx;
+      document.getElementById('slideModalImg').src = `/slide/${currentJobId}/${slideModalIdx}`;
+      updateSlideModalNav();
+    }
+  }
+
+  function closeSlideModal(e) {
+    if (e.target === document.getElementById('slideModal')) {
+      closeSlideModalDirect();
+    }
+  }
+
+  function closeSlideModalDirect() {
+    document.getElementById('slideModal').classList.remove('visible');
+    document.body.style.overflow = '';
+  }
+
+  /* ──────────────────────────────────────────
+     UI helpers
+  ────────────────────────────────────────── */
+  function showProgress() {
+    document.getElementById('progressWrap').classList.add('visible');
+    updateProgressBar(0);
+    updateSteps(0);
+  }
+
+  function hideProgress() {
+    document.getElementById('progressWrap').classList.remove('visible');
+  }
+
+  function updateProgressBar(pct) {
+    document.getElementById('progressBar').style.width = pct + '%';
+    document.getElementById('progressPct').textContent = Math.round(pct) + '%';
+  }
+
+  function updateProgressMsg(msg) {
+    document.getElementById('progressMsg').textContent = msg;
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('errorBox');
+    document.getElementById('errorMsg').textContent = '오류: ' + msg;
+    el.classList.add('visible');
+  }
+
+  function hideError() {
+    document.getElementById('errorBox').classList.remove('visible');
+  }
+
+  function showResults() { document.getElementById('resultsWrap').classList.add('visible'); }
+  function hideResults() { document.getElementById('resultsWrap').classList.remove('visible'); }
+
+  function setGenerateBtn(disabled) {
+    const btn = document.getElementById('generateBtn');
+    btn.disabled = disabled;
+    btn.innerHTML = disabled
+      ? '<div class="spinner" style="width:16px;height:16px;border-width:2px;"></div>생성 중...'
+      : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>카드뉴스 생성';
+  }
+
+  function escapeHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  /* ──────────────────────────────────────────
+     SNS — Instagram
+  ────────────────────────────────────────── */
+  function showConnectForm() {
+    document.getElementById('igNotConnected').style.display = 'none';
+    document.getElementById('igConnectForm').classList.add('visible');
+  }
+
+  function cancelConnect() {
+    document.getElementById('igConnectForm').classList.remove('visible');
+    document.getElementById('igNotConnected').style.display = '';
+  }
+
+  async function connectInstagram() {
+    const username = document.getElementById('igUsernameInput').value.trim().replace('@', '');
+    const password = document.getElementById('igPasswordInput').value;
+
+    if (!username || !password) {
+      showToast('사용자명과 비밀번호를 입력해주세요.', 'error');
+      return;
+    }
+
+    const btn = document.querySelector('#igConnectForm .btn-primary');
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;"></div>연결 중...';
+
+    try {
+      const res = await fetch('/api/sns/instagram/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await res.json();
+
+      if (data.error) throw new Error(data.error);
+
+      localStorage.setItem('igProfile', JSON.stringify(data.profile));
+      showInstagramProfile(data.profile);
+      showToast('Instagram 계정이 연결되었습니다!', 'success');
+    } catch(e) {
+      showToast('연결 실패: ' + e.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '연결하기';
+    }
+  }
+
+  function showInstagramProfile(profile) {
+    document.getElementById('igConnectForm').classList.remove('visible');
+    document.getElementById('igNotConnected').style.display = 'none';
+    document.getElementById('igProfile').classList.add('visible');
+    document.getElementById('igStatus').textContent = '연결됨';
+
+    document.getElementById('igUsername').textContent = '@' + profile.username;
+    document.getElementById('igBio').textContent = profile.biography || '';
+    document.getElementById('igFollowers').textContent = formatNum(profile.followers);
+    document.getElementById('igFollowing').textContent = formatNum(profile.following);
+    document.getElementById('igPosts').textContent = formatNum(profile.posts);
+
+    if (profile.profile_pic) {
+      document.getElementById('igAvatar').innerHTML = `<img src="${profile.profile_pic}" alt="">`;
+    }
+  }
+
+  function disconnectInstagram() {
+    localStorage.removeItem('igProfile');
+    document.getElementById('igProfile').classList.remove('visible');
+    document.getElementById('igNotConnected').style.display = '';
+    document.getElementById('igStatus').textContent = '미연결';
+    document.getElementById('igUsernameInput').value = '';
+    document.getElementById('igPasswordInput').value = '';
+    showToast('연결이 해제되었습니다.');
+  }
+
+  async function analyzeInstagram() {
+    const btn = document.querySelector('#igProfile .btn-primary');
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;"></div>분석 중...';
+
+    try {
+      const res = await fetch('/api/sns/instagram/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+
+      if (data.error) throw new Error(data.error);
+
+      currentPersona = data.persona;
+      showToast('페르소나 분석 완료! 페르소나 탭에서 확인하세요.', 'success');
+      renderPersona(currentPersona);
+    } catch(e) {
+      showToast('분석 실패: ' + e.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '분석하기';
+    }
+  }
+
+  async function analyzeInstagramByUrl() {
+    const url = document.getElementById('igUrlInput').value.trim();
+    if (!url) {
+      showToast('인스타그램 URL을 입력해주세요.', 'error');
+      return;
+    }
+
+    const btn = document.querySelector('#igConnectForm .btn-primary');
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;"></div>분석 중...';
+
+    try {
+      const res = await fetch('/api/sns/instagram/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+      const data = await res.json();
+
+      if (data.error) throw new Error(data.error);
+
+      currentPersona = data.persona;
+      localStorage.setItem('igConnected', 'true');
+      localStorage.setItem('igUrl', url);
+
+      // 연결 상태 UI 업데이트
+      document.getElementById('igStatus').textContent = '연결됨';
+      document.getElementById('igStatus').style.color = 'var(--success)';
+      document.getElementById('igConnectForm').classList.remove('visible');
+      document.getElementById('igNotConnected').style.display = 'none';
+      document.getElementById('igProfile').style.display = 'block';
+
+      const username = url.match(/instagram\.com\/([^/?]+)/);
+      document.getElementById('igUsername').textContent = '@' + (username ? username[1] : 'unknown');
+
+      showToast('페르소나 분석 완료! 페르소나 탭에서 확인하세요.', 'success');
+      renderPersona(currentPersona);
+      updateDashboard();
+    } catch(e) {
+      showToast('분석 실패: ' + e.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '페르소나 분석';
+    }
+  }
+
+  function openSnsPost() {
+    const igProfile = JSON.parse(localStorage.getItem('igProfile') || 'null');
+    if (!igProfile) {
+      showToast('SNS 계정을 먼저 연결해주세요.', 'error');
+      return;
+    }
+    showToast('SNS 게시 기능은 준비 중입니다.');
+  }
+
+  function formatNum(n) {
+    if (n >= 10000) return (n / 10000).toFixed(1) + '만';
+    if (n >= 1000)  return (n / 1000).toFixed(1) + 'K';
+    return String(n);
+  }
+
+  /* ──────────────────────────────────────────
+     Persona
+  ────────────────────────────────────────── */
+  async function loadPersona() {
+    try {
+      const res = await fetch('/api/persona');
+      const persona = await res.json();
+      currentPersona = persona;
+      renderPersona(persona);
+      document.getElementById('personaContent').style.display = '';
+      document.getElementById('personaNoSns').style.display = 'none';
+    } catch(e) {
+      document.getElementById('personaContent').style.display = 'none';
+      document.getElementById('personaNoSns').style.display = '';
+    }
+  }
+
+  function renderPersona(p) {
+    if (!p) return;
+
+    const b = p.brand || {};
+    document.getElementById('pBrandName').textContent = b.name || '—';
+    document.getElementById('pTagline').textContent = b.tagline || '—';
+
+    const mainColorEl = document.getElementById('pMainColor');
+    mainColorEl.innerHTML = b.main_color
+      ? `<div class="color-swatch"><div class="swatch" style="background:${escapeHtml(b.main_color)}"></div>${escapeHtml(b.main_color)}</div>`
+      : '—';
+
+    const subColorEl = document.getElementById('pSubColor');
+    subColorEl.innerHTML = b.sub_color
+      ? `<div class="color-swatch"><div class="swatch" style="background:${escapeHtml(b.sub_color)}"></div>${escapeHtml(b.sub_color)}</div>`
+      : '—';
+
+    const cs = p.copy_style || {};
+    document.getElementById('pTone').textContent = cs.tone || '—';
+    renderTags('pKeyPhrases', cs.key_phrases || []);
+    renderTags('pHooks', cs.hooks || []);
+
+    const vs = p.visual_style || {};
+    const colorsEl = document.getElementById('pColors');
+    colorsEl.innerHTML = (vs.colors || []).map(c =>
+      `<div class="color-swatch tag"><div class="swatch" style="background:${escapeHtml(c)}"></div>${escapeHtml(c)}</div>`
+    ).join('') || '<span style="color:var(--muted);font-size:13px;">—</span>';
+
+    renderTags('pImageTypes', vs.image_types || []);
+
+    document.getElementById('pTarget').textContent = p.target_audience || '—';
+    renderTags('pHashtags', p.hashtags || []);
+  }
+
+  function renderTags(elId, items) {
+    const el = document.getElementById(elId);
+    if (!items || items.length === 0) {
+      el.innerHTML = '<span style="color:var(--muted);font-size:13px;">—</span>';
+    } else {
+      el.innerHTML = items.map(t => `<div class="tag">${escapeHtml(t)}</div>`).join('');
+    }
+  }
+
+  async function reanalyzePersona() {
+    const igProfile = JSON.parse(localStorage.getItem('igProfile') || 'null');
+    if (!igProfile) {
+      showToast('Instagram 계정을 먼저 연결해주세요.', 'error');
+      navigate('sns', document.querySelector('[data-section="sns"]'));
+      return;
+    }
+
+    const btn = document.getElementById('reanalyzeBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;"></div>분석 중...';
+
+    try {
+      const res = await fetch('/api/sns/instagram/analyze', { method: 'POST' });
+      const data = await res.json();
+
+      if (data.error) throw new Error(data.error);
+
+      currentPersona = data.persona;
+      renderPersona(data.persona);
+      showToast('페르소나 재분석 완료!', 'success');
+    } catch(e) {
+      showToast('분석 실패: ' + e.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>페르소나 재분석';
+    }
+  }
+
+  async function savePersona() {
+    if (!currentPersona) return;
+    try {
+      const res = await fetch('/api/persona/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(currentPersona),
+      });
+      const data = await res.json();
+      if (data.success) showToast('페르소나가 저장되었습니다.', 'success');
+    } catch(e) {
+      showToast('저장 실패: ' + e.message, 'error');
+    }
+  }
+
+  /* ──────────────────────────────────────────
+     Settings
+  ────────────────────────────────────────── */
+  function loadSettings() {
+    const settings = JSON.parse(localStorage.getItem('settings') || '{}');
+    if (settings.openrouterKey) document.getElementById('settingOpenrouterKey').value = settings.openrouterKey;
+    if (settings.hfToken)        document.getElementById('settingHfToken').value = settings.hfToken;
+    if (settings.brandName)      document.getElementById('settingBrandName').value = settings.brandName;
+    if (settings.mainColor) {
+      document.getElementById('settingMainColor').value = settings.mainColor;
+      document.getElementById('settingMainColorText').value = settings.mainColor;
+    }
+    if (settings.subColor) {
+      document.getElementById('settingSubColor').value = settings.subColor;
+      document.getElementById('settingSubColorText').value = settings.subColor;
+    }
+    if (settings.target) document.getElementById('settingTarget').value = settings.target;
+    if (settings.cta)    document.getElementById('settingCta').value = settings.cta;
+  }
+
+  async function saveSettings() {
+    const settings = {
+      openrouterKey: document.getElementById('settingOpenrouterKey').value,
+      hfToken:       document.getElementById('settingHfToken').value,
+      brandName:     document.getElementById('settingBrandName').value.trim(),
+      mainColor:     document.getElementById('settingMainColorText').value.trim(),
+      subColor:      document.getElementById('settingSubColorText').value.trim(),
+      target:        document.getElementById('settingTarget').value.trim(),
+      cta:           document.getElementById('settingCta').value.trim(),
+    };
+
+    localStorage.setItem('settings', JSON.stringify(settings));
+    if (settings.brandName) localStorage.setItem('brandName', settings.brandName);
+
+    try {
+      await fetch('/api/settings/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          brand_name:      settings.brandName,
+          main_color:      settings.mainColor,
+          sub_color:       settings.subColor,
+          target_audience: settings.target,
+          cta_text:        settings.cta,
+        }),
+      });
+    } catch(e) {}
+
+    showToast('설정이 저장되었습니다.', 'success');
+  }
+
+  /* ──────────────────────────────────────────
+     Utilities
+  ────────────────────────────────────────── */
+  function togglePasswordVisibility(inputId, btn) {
+    const input = document.getElementById(inputId);
+    input.type = input.type === 'password' ? 'text' : 'password';
+  }
+
+  function openIgModal() {
+    document.getElementById('igModal').classList.add('visible');
+  }
+
+  function closeIgModal() {
+    document.getElementById('igModal').classList.remove('visible');
+  }
+
+  /* Keyboard shortcuts */
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      closeSlideModalDirect();
+      closeIgModal();
+    }
+    if (document.getElementById('slideModal').classList.contains('visible')) {
+      if (e.key === 'ArrowLeft')  slideModalNav(-1);
+      if (e.key === 'ArrowRight') slideModalNav(1);
+    }
+  });
+
+  /* ──────────────────────────────────────────
+     Init
+  ────────────────────────────────────────── */
+  document.addEventListener('DOMContentLoaded', function() {
+    const igProfile = JSON.parse(localStorage.getItem('igProfile') || 'null');
+    if (igProfile) showInstagramProfile(igProfile);
+
+    document.getElementById('snsPostBtn').disabled = !igProfile;
+
+    refreshDashboard();
+
+    // Restore sidebar state
+    const sidebarState = localStorage.getItem('sidebarCollapsed');
+    if (sidebarState === 'true') toggleSidebar();
+  });
+
+  // Persist sidebar state
+  document.getElementById('sidebar').addEventListener('transitionend', function() {
+    localStorage.setItem('sidebarCollapsed', String(sidebarCollapsed));
+  });
+
+  /* ──────────────────────────────────────────
+     Task 1: Persona URL analysis (independent)
+  ────────────────────────────────────────── */
+  async function analyzePersonaByUrl() {
+    const url = document.getElementById('personaUrlInput').value.trim();
+    if (!url) {
+      setAnalyzeStatus('인스타그램 URL을 입력해주세요.', 'error');
+      return;
+    }
+
+    const btn = document.getElementById('personaAnalyzeBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner" style="width:13px;height:13px;border-width:2px;"></div>분석 중...';
+    setAnalyzeStatus('분석 중입니다. 잠시 기다려주세요...', 'loading');
+
+    try {
+      const res = await fetch('/api/sns/instagram/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      currentPersona = data.persona;
+      renderPersona(data.persona);
+      document.getElementById('personaContent').style.display = '';
+      document.getElementById('personaNoSns').style.display = 'none';
+      setAnalyzeStatus('분석 완료! 아래에서 결과를 확인하세요.', 'success');
+      showToast('페르소나 분석 완료!', 'success');
+    } catch(e) {
+      setAnalyzeStatus('분석 실패: ' + e.message, 'error');
+      showToast('분석 실패: ' + e.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>분석하기';
+    }
+  }
+
+  function setAnalyzeStatus(msg, type) {
+    const el = document.getElementById('personaAnalyzeStatus');
+    el.textContent = msg;
+    el.className = 'persona-analyze-status' + (type ? ' ' + type : '');
+  }
+
+  /* ──────────────────────────────────────────
+     Task 2: Editable persona fields
+  ────────────────────────────────────────── */
+  // Map section key -> display/edit element ids and edit btn
+  const personaSections = {
+    brand:  { display: 'pBrandDisplay',  edit: 'pBrandEdit',  card: 'pCardBrand' },
+    copy:   { display: 'pCopyDisplay',   edit: 'pCopyEdit',   card: 'pCardCopy' },
+    visual: { display: 'pVisualDisplay', edit: 'pVisualEdit', card: 'pCardVisual' },
+    target: { display: 'pTargetDisplay', edit: 'pTargetEdit', card: 'pCardTarget' },
+  };
+
+  function togglePersonaEdit(section) {
+    const cfg = personaSections[section];
+    const displayEl = document.getElementById(cfg.display);
+    const editEl    = document.getElementById(cfg.edit);
+    const btn       = document.querySelector('#' + cfg.card + ' .persona-edit-btn');
+
+    const isEditing = editEl.style.display !== 'none';
+
+    if (isEditing) {
+      // cancel — restore display
+      editEl.style.display = 'none';
+      displayEl.style.display = '';
+      btn.textContent = '편집';
+      btn.classList.remove('editing');
+    } else {
+      // populate edit fields from currentPersona then show
+      populateEditFields(section);
+      editEl.style.display = '';
+      displayEl.style.display = 'none';
+      btn.textContent = '취소';
+      btn.classList.add('editing');
+    }
+  }
+
+  function populateEditFields(section) {
+    if (!currentPersona) return;
+    const b  = currentPersona.brand || {};
+    const cs = currentPersona.copy_style || {};
+    const vs = currentPersona.visual_style || {};
+
+    if (section === 'brand') {
+      document.getElementById('eBrandName').value = b.name || '';
+      document.getElementById('eTagline').value   = b.tagline || '';
+      const mc = b.main_color || '#E8862A';
+      const sc = b.sub_color  || '#F5F3F0';
+      document.getElementById('eMainColor').value  = mc;
+      document.getElementById('eSubColor').value   = sc;
+      try { document.getElementById('eMainColorPicker').value = mc; } catch(e) {}
+      try { document.getElementById('eSubColorPicker').value  = sc; } catch(e) {}
+    } else if (section === 'copy') {
+      document.getElementById('eTone').value       = cs.tone || '';
+      document.getElementById('eKeyPhrases').value = (cs.key_phrases || []).join(', ');
+      document.getElementById('eHooks').value      = (cs.hooks || []).join(', ');
+    } else if (section === 'visual') {
+      document.getElementById('eColors').value     = (vs.colors || []).join(', ');
+      document.getElementById('eImageTypes').value = (vs.image_types || []).join(', ');
+    } else if (section === 'target') {
+      document.getElementById('eTarget').value   = currentPersona.target_audience || '';
+      document.getElementById('eHashtags').value = (currentPersona.hashtags || []).join(', ');
+    }
+  }
+
+  async function savePersonaSection(section) {
+    if (!currentPersona) currentPersona = {};
+    if (!currentPersona.brand)        currentPersona.brand        = {};
+    if (!currentPersona.copy_style)   currentPersona.copy_style   = {};
+    if (!currentPersona.visual_style) currentPersona.visual_style = {};
+
+    if (section === 'brand') {
+      currentPersona.brand.name      = document.getElementById('eBrandName').value.trim();
+      currentPersona.brand.tagline   = document.getElementById('eTagline').value.trim();
+      currentPersona.brand.main_color = document.getElementById('eMainColor').value.trim();
+      currentPersona.brand.sub_color  = document.getElementById('eSubColor').value.trim();
+    } else if (section === 'copy') {
+      currentPersona.copy_style.tone        = document.getElementById('eTone').value.trim();
+      currentPersona.copy_style.key_phrases = splitTags(document.getElementById('eKeyPhrases').value);
+      currentPersona.copy_style.hooks       = splitTags(document.getElementById('eHooks').value);
+    } else if (section === 'visual') {
+      currentPersona.visual_style.colors      = splitTags(document.getElementById('eColors').value);
+      currentPersona.visual_style.image_types = splitTags(document.getElementById('eImageTypes').value);
+    } else if (section === 'target') {
+      currentPersona.target_audience = document.getElementById('eTarget').value.trim();
+      currentPersona.hashtags        = splitTags(document.getElementById('eHashtags').value);
+    }
+
+    // Exit edit mode
+    togglePersonaEdit(section);
+    // Re-render display
+    renderPersona(currentPersona);
+
+    // Save to server
+    try {
+      const res = await fetch('/api/persona/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(currentPersona),
+      });
+      const data = await res.json();
+      if (data.success) showToast('저장되었습니다.', 'success');
+    } catch(e) {
+      showToast('저장 실패: ' + e.message, 'error');
+    }
+  }
+
+  function splitTags(str) {
+    return str.split(',').map(s => s.trim()).filter(s => s.length > 0);
+  }
+
+  /* ──────────────────────────────────────────
+     Task 3: Image Editor
+  ────────────────────────────────────────── */
+  let editorState = {
+    imgSrc: '',
+    slideIdx: 0,
+    img: null,
+    brightness: 0,
+    contrast: 0,
+    saturation: 0,
+    texts: [],          // [{id, text, x, y, size, color, bold}]
+    selectedId: null,
+    dragging: false,
+    dragOffX: 0,
+    dragOffY: 0,
+    canvasScale: 1,     // ratio: canvas CSS px / actual px
+    canvasOffX: 0,
+    canvasOffY: 0,
+  };
+
+  let editorNextId = 1;
+
+  function openEditor(imgSrc, slideIdx) {
+    editorState.imgSrc   = imgSrc;
+    editorState.slideIdx = slideIdx;
+    editorState.texts    = [];
+    editorState.selectedId = null;
+    editorNextId = 1;
+
+    // Reset sliders
+    ['brightness','contrast','saturation'].forEach(k => {
+      const slider = document.getElementById(k + 'Slider');
+      slider.value = 0;
+      document.getElementById(k + 'Val').textContent = '0';
+    });
+    editorState.brightness = 0;
+    editorState.contrast   = 0;
+    editorState.saturation = 0;
+
+    document.getElementById('editorTextList').innerHTML =
+      '<div style="font-size:12px;color:rgba(255,255,255,0.3);text-align:center;padding:8px 0;">추가된 텍스트가 없습니다</div>';
+    document.getElementById('editorTextProps').classList.remove('visible');
+    document.getElementById('editorTextInput').value = '';
+
+    const modal = document.getElementById('editorModal');
+    modal.classList.add('visible');
+    document.body.style.overflow = 'hidden';
+
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = function() {
+      editorState.img = img;
+      setupEditorCanvas();
+      drawEditor();
+    };
+    img.onerror = function() {
+      showToast('이미지를 불러오지 못했습니다.', 'error');
+      closeEditor();
+    };
+    img.src = imgSrc + '?t=' + Date.now();
+  }
+
+  function setupEditorCanvas() {
+    const canvas = document.getElementById('editorCanvas');
+    const area   = canvas.parentElement;
+    const img    = editorState.img;
+
+    // Natural image size
+    const W = img.naturalWidth  || 1080;
+    const H = img.naturalHeight || 1350;
+
+    // Available area (minus some padding)
+    const aW = area.clientWidth  - 32;
+    const aH = area.clientHeight - 48;
+
+    const scale = Math.min(aW / W, aH / H, 1);
+
+    canvas.width  = W;
+    canvas.height = H;
+    canvas.style.width  = Math.round(W * scale) + 'px';
+    canvas.style.height = Math.round(H * scale) + 'px';
+
+    editorState.canvasScale = scale;
+
+    // Canvas position relative to viewport for hit-testing
+    const rect = canvas.getBoundingClientRect();
+    editorState.canvasOffX = rect.left;
+    editorState.canvasOffY = rect.top;
+  }
+
+  function getCanvasCoords(clientX, clientY) {
+    const canvas = document.getElementById('editorCanvas');
+    const rect   = canvas.getBoundingClientRect();
+    const scaleX = canvas.width  / rect.width;
+    const scaleY = canvas.height / rect.height;
+    return {
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top)  * scaleY,
+    };
+  }
+
+  function buildFilter() {
+    const b = editorState.brightness;
+    const c = editorState.contrast;
+    const s = editorState.saturation;
+    const brightness  = `brightness(${1 + b / 100})`;
+    const contrast    = `contrast(${1 + c / 100})`;
+    const saturation  = `saturate(${1 + s / 100})`;
+    return `${brightness} ${contrast} ${saturation}`;
+  }
+
+  function drawEditor() {
+    const canvas = document.getElementById('editorCanvas');
+    const ctx    = canvas.getContext('2d');
+    const img    = editorState.img;
+    if (!img) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Apply filters via CSS filter on ctx
+    ctx.filter = buildFilter();
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    ctx.filter = 'none';
+
+    // Draw text overlays
+    editorState.texts.forEach(t => {
+      ctx.save();
+      ctx.font = `${t.bold ? 'bold ' : ''}${t.size}px 'Apple SD Gothic Neo', 'Pretendard', sans-serif`;
+      ctx.fillStyle = t.color;
+      ctx.textBaseline = 'top';
+
+      // Subtle drop shadow for readability
+      ctx.shadowColor = 'rgba(0,0,0,0.55)';
+      ctx.shadowBlur  = 6;
+      ctx.shadowOffsetX = 1;
+      ctx.shadowOffsetY = 1;
+
+      ctx.fillText(t.text, t.x, t.y);
+
+      // Selection indicator
+      if (t.id === editorState.selectedId) {
+        ctx.shadowColor = 'transparent';
+        const metrics = ctx.measureText(t.text);
+        const w = metrics.width;
+        const h = t.size * 1.2;
+        ctx.strokeStyle = 'rgba(232,134,42,0.9)';
+        ctx.lineWidth   = 2;
+        ctx.setLineDash([5, 3]);
+        ctx.strokeRect(t.x - 4, t.y - 2, w + 8, h + 4);
+        ctx.setLineDash([]);
+      }
+      ctx.restore();
+    });
+  }
+
+  function updateFilter() {
+    const b = parseInt(document.getElementById('brightnessSlider').value);
+    const c = parseInt(document.getElementById('contrastSlider').value);
+    const s = parseInt(document.getElementById('saturationSlider').value);
+    document.getElementById('brightnessVal').textContent = b;
+    document.getElementById('contrastVal').textContent   = c;
+    document.getElementById('saturationVal').textContent = s;
+    editorState.brightness = b;
+    editorState.contrast   = c;
+    editorState.saturation = s;
+    drawEditor();
+  }
+
+  function addTextOverlay() {
+    const input = document.getElementById('editorTextInput');
+    const text  = input.value.trim();
+    if (!text) { showToast('텍스트를 입력하세요.', 'error'); return; }
+
+    const canvas = document.getElementById('editorCanvas');
+    const t = {
+      id:    editorNextId++,
+      text:  text,
+      x:     canvas.width  / 2 - 100,
+      y:     canvas.height / 2 - 20,
+      size:  48,
+      color: '#ffffff',
+      bold:  false,
+    };
+    editorState.texts.push(t);
+    input.value = '';
+    selectText(t.id);
+    updateTextList();
+    drawEditor();
+  }
+
+  function selectText(id) {
+    editorState.selectedId = id;
+    const t = editorState.texts.find(x => x.id === id);
+    if (!t) {
+      document.getElementById('editorTextProps').classList.remove('visible');
+      return;
+    }
+    document.getElementById('editorTextProps').classList.add('visible');
+    document.getElementById('propTextContent').value = t.text;
+    document.getElementById('propFontSize').value    = t.size;
+    document.getElementById('propFontSizeVal').textContent = t.size + 'px';
+    document.getElementById('propTextColor').value   = t.color;
+    const boldBtn = document.getElementById('propBoldBtn');
+    boldBtn.classList.toggle('active', t.bold);
+
+    // Highlight in list
+    document.querySelectorAll('.editor-text-item').forEach(el => {
+      el.classList.toggle('selected', parseInt(el.dataset.id) === id);
+    });
+    drawEditor();
+  }
+
+  function updateSelectedText(prop, value) {
+    const t = editorState.texts.find(x => x.id === editorState.selectedId);
+    if (!t) return;
+    if (prop === 'content') t.text  = value;
+    if (prop === 'size')    t.size  = value;
+    if (prop === 'color')   t.color = value;
+    updateTextList();
+    drawEditor();
+  }
+
+  function toggleTextBold() {
+    const t = editorState.texts.find(x => x.id === editorState.selectedId);
+    if (!t) return;
+    t.bold = !t.bold;
+    document.getElementById('propBoldBtn').classList.toggle('active', t.bold);
+    drawEditor();
+  }
+
+  function deleteText(id) {
+    editorState.texts = editorState.texts.filter(x => x.id !== id);
+    if (editorState.selectedId === id) {
+      editorState.selectedId = null;
+      document.getElementById('editorTextProps').classList.remove('visible');
+    }
+    updateTextList();
+    drawEditor();
+  }
+
+  function updateTextList() {
+    const list = document.getElementById('editorTextList');
+    if (editorState.texts.length === 0) {
+      list.innerHTML = '<div style="font-size:12px;color:rgba(255,255,255,0.3);text-align:center;padding:8px 0;">추가된 텍스트가 없습니다</div>';
+      return;
+    }
+    list.innerHTML = editorState.texts.map(t => `
+      <div class="editor-text-item${t.id === editorState.selectedId ? ' selected' : ''}" data-id="${t.id}" onclick="selectText(${t.id})">
+        <div class="editor-text-item-label">${escapeHtml(t.text)}</div>
+        <button class="editor-text-del" onclick="event.stopPropagation(); deleteText(${t.id})">&#x2715;</button>
+      </div>
+    `).join('');
+  }
+
+  // Hit-test: find topmost text at canvas coords
+  function hitTestText(cx, cy) {
+    const canvas = document.getElementById('editorCanvas');
+    const ctx    = canvas.getContext('2d');
+    for (let i = editorState.texts.length - 1; i >= 0; i--) {
+      const t = editorState.texts[i];
+      ctx.font = `${t.bold ? 'bold ' : ''}${t.size}px sans-serif`;
+      const w = ctx.measureText(t.text).width;
+      const h = t.size * 1.2;
+      if (cx >= t.x - 4 && cx <= t.x + w + 4 && cy >= t.y - 2 && cy <= t.y + h + 4) {
+        return t;
+      }
+    }
+    return null;
+  }
+
+  // Canvas mouse events
+  (function setupCanvasEvents() {
+    document.addEventListener('DOMContentLoaded', function() {
+      const canvas = document.getElementById('editorCanvas');
+
+      canvas.addEventListener('mousedown', function(e) {
+        const { x, y } = getCanvasCoords(e.clientX, e.clientY);
+        const hit = hitTestText(x, y);
+        if (hit) {
+          selectText(hit.id);
+          editorState.dragging = true;
+          editorState.dragOffX = x - hit.x;
+          editorState.dragOffY = y - hit.y;
+          canvas.classList.add('moving');
+        } else {
+          editorState.selectedId = null;
+          document.getElementById('editorTextProps').classList.remove('visible');
+          document.querySelectorAll('.editor-text-item').forEach(el => el.classList.remove('selected'));
+          drawEditor();
+        }
+      });
+
+      canvas.addEventListener('mousemove', function(e) {
+        if (!editorState.dragging || !editorState.selectedId) return;
+        const { x, y } = getCanvasCoords(e.clientX, e.clientY);
+        const t = editorState.texts.find(x2 => x2.id === editorState.selectedId);
+        if (t) {
+          t.x = x - editorState.dragOffX;
+          t.y = y - editorState.dragOffY;
+          drawEditor();
+        }
+      });
+
+      canvas.addEventListener('mouseup', function() {
+        editorState.dragging = false;
+        canvas.classList.remove('moving');
+      });
+
+      canvas.addEventListener('mouseleave', function() {
+        editorState.dragging = false;
+        canvas.classList.remove('moving');
+      });
+
+      // Touch support
+      canvas.addEventListener('touchstart', function(e) {
+        e.preventDefault();
+        const touch = e.touches[0];
+        canvas.dispatchEvent(new MouseEvent('mousedown', { clientX: touch.clientX, clientY: touch.clientY }));
+      }, { passive: false });
+
+      canvas.addEventListener('touchmove', function(e) {
+        e.preventDefault();
+        const touch = e.touches[0];
+        canvas.dispatchEvent(new MouseEvent('mousemove', { clientX: touch.clientX, clientY: touch.clientY }));
+      }, { passive: false });
+
+      canvas.addEventListener('touchend', function(e) {
+        e.preventDefault();
+        canvas.dispatchEvent(new MouseEvent('mouseup', {}));
+      }, { passive: false });
+    });
+  })();
+
+  function resetEditor() {
+    editorState.texts      = [];
+    editorState.selectedId = null;
+    editorState.brightness = 0;
+    editorState.contrast   = 0;
+    editorState.saturation = 0;
+    document.getElementById('brightnessSlider').value = 0;
+    document.getElementById('contrastSlider').value   = 0;
+    document.getElementById('saturationSlider').value = 0;
+    document.getElementById('brightnessVal').textContent = '0';
+    document.getElementById('contrastVal').textContent   = '0';
+    document.getElementById('saturationVal').textContent = '0';
+    document.getElementById('editorTextProps').classList.remove('visible');
+    updateTextList();
+    drawEditor();
+  }
+
+  function downloadEdited() {
+    const canvas = document.getElementById('editorCanvas');
+    canvas.toBlob(function(blob) {
+      const url = URL.createObjectURL(blob);
+      const a   = document.createElement('a');
+      a.href     = url;
+      a.download = `slide_${String(editorState.slideIdx + 1).padStart(2, '0')}_edited.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }, 'image/png');
+  }
+
+  function closeEditor() {
+    document.getElementById('editorModal').classList.remove('visible');
+    document.body.style.overflow = '';
+    editorState.img = null;
+  }
+
+  // Also close editor on Escape
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && document.getElementById('editorModal').classList.contains('visible')) {
+      closeEditor();
+    }
+  });
+
+  // doInstagramConnect was referenced by igConnectBtn but function was missing; add stub
+  function doInstagramConnect() {
+    const username = document.getElementById('modalIgUsername').value.trim().replace('@', '');
+    const password = document.getElementById('modalIgPassword').value;
+    if (!username || !password) {
+      showToast('사용자명과 비밀번호를 입력해주세요.', 'error');
+      return;
+    }
+    const btn = document.getElementById('igConnectBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;"></div>연결 중...';
+
+    fetch('/api/sns/instagram/connect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) throw new Error(data.error);
+      localStorage.setItem('igProfile', JSON.stringify(data.profile));
+      closeIgModal();
+      showInstagramProfile(data.profile);
+      showToast('Instagram 계정이 연결되었습니다!', 'success');
+    })
+    .catch(e => showToast('연결 실패: ' + e.message, 'error'))
+    .finally(() => {
+      btn.disabled = false;
+      btn.textContent = '연결하기';
+    });
+  }
+
+  function updateDashboard() {
+    refreshDashboard();
+  }
+</script>
+</body>
+</html>
