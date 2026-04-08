@@ -13,9 +13,8 @@ output/
 *.png
 *.jpg
 
-# Data (regeneratable)
+# Data
 olidia_posts.json
-olidia_all_posts.json
 olidia_insta_images/
 usage.json
 persona.json
