@@ -110,17 +110,23 @@ def html_to_png(html_path: str, png_path: str):
 
     # 방법 2: Chrome headless
     chrome_paths = [
-        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-        "google-chrome",
+        "/usr/bin/chromium",
+        "/usr/bin/chromium-browser",
+        "/usr/bin/google-chrome",
+        "chromium",
         "chromium-browser",
+        "google-chrome",
+        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
     ]
     for chrome in chrome_paths:
         try:
             subprocess.run(
                 [
                     chrome,
-                    "--headless",
+                    "--headless=new",
+                    "--no-sandbox",
                     "--disable-gpu",
+                    "--disable-dev-shm-usage",
                     f"--window-size=1080,1350",
                     f"--screenshot={os.path.abspath(png_path)}",
                     file_url,
