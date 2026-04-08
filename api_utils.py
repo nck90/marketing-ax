@@ -1,67 +1,65 @@
-"""텍스트: OpenRouter 무료 모델 / 이미지: HuggingFace"""
+"""HuggingFace Inference API - 텍스트 생성 유틸리티"""
 
 import json
 import os
 import time
-import httpx
 
-OPENROUTER_KEY = os.environ.get("OPENROUTER_KEY", "")
-OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-FREE_MODELS = [
-    "nvidia/nemotron-3-super-120b-a12b:free",
-    "minimax/minimax-m2.5:free",
-    "stepfun/step-3.5-flash:free",
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
+from huggingface_hub import InferenceClient
+
+HF_TOKEN = os.environ.get("HF_TOKEN", "")
+HF_TEXT_MODELS = [
+    "Qwen/Qwen2.5-72B-Instruct",
+    "meta-llama/Llama-3.1-8B-Instruct",
 ]
+
+_client = None
+
+
+def _get_client():
+    global _client
+    if _client is None:
+        _client = InferenceClient(token=HF_TOKEN)
+    return _client
 
 
 def call_llm(prompt, max_retries=5):
-    """OpenRouter 무료 모델 호출 - 실패 시 다른 모델로 폴백"""
-    for model in FREE_MODELS:
+    """HuggingFace 텍스트 생성 - 모델 자동 폴백"""
+    client = _get_client()
+
+    for model in HF_TEXT_MODELS:
         for attempt in range(max_retries):
             try:
-                resp = httpx.post(
-                    OPENROUTER_URL,
-                    headers={
-                        "Authorization": f"Bearer {OPENROUTER_KEY}",
-                        "Content-Type": "application/json",
-                    },
-                    json={
-                        "model": model,
-                        "messages": [
-                            {"role": "system", "content": "You are a helpful assistant. Always respond in Korean. When asked for JSON, output ONLY valid JSON with no extra text."},
-                            {"role": "user", "content": prompt},
-                        ],
-                        "temperature": 0.7,
-                        "max_tokens": 4000,
-                    },
-                    timeout=300,
+                response = client.chat_completion(
+                    messages=[
+                        {"role": "system", "content": "You are a helpful assistant. Always respond in Korean. When asked for JSON, output ONLY valid JSON with no extra text."},
+                        {"role": "user", "content": prompt},
+                    ],
+                    model=model,
+                    max_tokens=4000,
+                    temperature=0.7,
                 )
-                data = resp.json()
-                if "error" in data:
-                    code = data["error"].get("code", "")
-                    if code in [429, "429"]:
-                        wait = (attempt + 1) * 10
-                        print(f"  [API] {model} rate limited - {wait}초 대기 ({attempt+1}/{max_retries})")
-                        time.sleep(wait)
-                        continue
-                    # 다른 에러면 다음 모델로
-                    print(f"  [API] {model} 에러 - 다음 모델 시도")
-                    break
-
-                resp.raise_for_status()
-                text = data["choices"][0]["message"]["content"]
-                time.sleep(2)
+                text = response.choices[0].message.content
+                time.sleep(1)
                 return text
             except Exception as e:
                 err_str = str(e)
-                if any(k in err_str for k in ["429", "503", "500", "rate"]):
+                if any(k in err_str for k in ["429", "503", "500", "rate", "quota", "busy", "overloaded"]):
                     wait = (attempt + 1) * 10
-                    print(f"  [API] {type(e).__name__} - {wait}초 후 재시도 ({attempt+1}/{max_retries})")
+                    print(f"  [API] {model} - {wait}초 후 재시도 ({attempt+1}/{max_retries})")
                     time.sleep(wait)
-                else:
-                    print(f"  [API] {model} 실패: {err_str[:80]} - 다음 모델 시도")
+                elif "402" in err_str or "Payment" in err_str:
+                    print(f"  [API] {model} 크레딧 소진 - 다음 모델 시도")
                     break
-    raise RuntimeError("모든 무료 모델 호출 실패")
+                else:
+                    print(f"  [API] {model} 에러: {err_str[:60]} - 다음 모델 시도")
+                    break
+    raise RuntimeError("모든 텍스트 모델 호출 실패")
 
 
 def parse_json_response(text):

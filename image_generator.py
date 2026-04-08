@@ -4,6 +4,12 @@ import os
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 from huggingface_hub import InferenceClient
 
 HF_TOKEN = os.environ.get("HF_TOKEN", "")
